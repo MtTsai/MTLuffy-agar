@@ -1,0 +1,5 @@
+*.o
+*.swp
+*.bak
+
+node_modules/express/*
