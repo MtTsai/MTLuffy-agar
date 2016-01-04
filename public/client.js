@@ -17,7 +17,12 @@ document.addEventListener("DOMContentLoaded", function() {
     var ctop = canvas.getBoundingClientRect().top;
     var cleft = canvas.getBoundingClientRect().left;
 
+    var own_circle = {
+            pos: [0, 0],
+            radius: 0
+        };
     var circles = [];
+    var foods = [];
 
     window.onload = displayWindowSize;
 
@@ -35,15 +40,15 @@ document.addEventListener("DOMContentLoaded", function() {
     canvas.onmouseup = function(e){ mouse.click = false; };
 
     canvas.onmousemove = function(e) {
-        // normalize mouse position to range 0.0 - 1.0
-        mouse.pos.x = (e.clientX - cleft) / cwidth;
-        mouse.pos.y = (e.clientY - ctop) / cheight;
+        mouse.pos.x = e.clientX;
+        mouse.pos.y = e.clientY;
+
         mouse.move = true;
     };
 
     canvas.onmouseout = function(e) {
-        mouse.pos.x = (e.clientX - cleft) / cwidth;
-        mouse.pos.y = (e.clientY - ctop) / cheight;
+        mouse.pos.x = e.clientX;
+        mouse.pos.y = e.clientY;
         
         mouse.click = false;
     }
@@ -63,25 +68,44 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     // websocket event
-    socket.on('queryPos', function() {
-        socket.emit('updatePos', [mouse.pos.x, mouse.pos.y]);
+    socket.on('queryDir', function() {
+        var x = mouse.pos.x - own_circle.pos[0];
+        var y = mouse.pos.y - own_circle.pos[1];
+        socket.emit('updatePos', [x, y]);
     });
 
     socket.on('reloadCircle', function () {
         circles = [];
+        foods = [];
+    });
+
+    socket.on('updateOwn', function (pos, radius) {
+        own_circle = {pos: pos, radius: radius};
     });
 
     socket.on('updateCircle', function (pos, radius) {
         circles.push({pos: pos, radius: radius});
     });
 
+    socket.on('updateFood', function (pos, radius) {
+        foods.push({pos: pos, radius: radius});
+    });
+
     socket.on('drawCircle', function () {
         // clear the canvas
         context.clearRect(0, 0, canvas.width, canvas.height);
 
+        // draw own circle
+        drawCircle([own_circle.pos[0], own_circle.pos[1]], own_circle.radius);
+
         // draw circles
         for (var i in circles) {
-            drawCircle([circles[i].pos[0] * cwidth, circles[i].pos[1] * cheight], circles[i].radius);
+            drawCircle([circles[i].pos[0], circles[i].pos[1]], circles[i].radius);
+        }
+
+        // draw foods
+        for (var i in foods) {
+            drawCircle([foods[i].pos[0], foods[i].pos[1]], foods[i].radius);
         }
     });
 });

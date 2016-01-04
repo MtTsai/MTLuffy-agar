@@ -14,9 +14,32 @@ console.log("Server running on port: " + port);
 app.use(express.static(__dirname + '/public'));
 
 /* settings */
+var map = {
+        width: 1980,
+        height: 1024
+    };
+var p_window = { // Player's visible window size
+        width: 1980,
+        height: 1024
+    };
+
 
 /* variables */
 var client_list = [];
+var food_list = [];
+
+/* useful function */
+function random (low, high) {
+    return Math.random() * (high - low) + low;
+}
+
+/* initialize */
+for (var i = 0; i < 10; i++) {
+    food_list.push({
+        pos: [random(0, map.width), random(0, map.height)],
+        radius: 5
+    });
+}
 
 /* Handling webSocket */
 io.on('connection', function(socket) {
@@ -24,29 +47,37 @@ io.on('connection', function(socket) {
     console.log(socketId + 'is connecting');
     client_list[socketId] = {
         socket: socket,
-        pos: [0, 0],
+        pos: [random(0, map.width), random(0, map.height)],
         radius: 10,
-        speed: 5
+        speed: 10
     };
 
-    socket.on('updatePos', function(pos) {
+    socket.on('updatePos', function(dir) {
         var pos_ori = client_list[socketId].pos;
-        var distance = Math.sqrt(Math.pow(pos[0] - pos_ori[0], 2) + Math.pow(pos[1] - pos_ori[1], 2));
+        var distance = Math.sqrt(Math.pow(dir[0], 2) + Math.pow(dir[1], 2));
         
         // distance cannot equal to 0
-        // 0.01 is the distance enough small to stop the circle 
-        if (distance > 0.01) {
-            var movement_x = ((pos_ori[0] - pos[0]) / distance) * (client_list[socketId].speed / 1000);
-            var movement_y = ((pos_ori[1] - pos[1]) / distance) * (client_list[socketId].speed / 1000);
-            client_list[socketId].pos[0] = pos_ori[0] - movement_x;
-            client_list[socketId].pos[1] = pos_ori[1] - movement_y;
+        if (distance > client_list[socketId].radius) {
+            var movement_x = (dir[0] / distance) * (client_list[socketId].speed);
+            var movement_y = (dir[1] / distance) * (client_list[socketId].speed);
+            client_list[socketId].pos[0] = pos_ori[0] + movement_x;
+            client_list[socketId].pos[1] = pos_ori[1] + movement_y;
         }
 
         // notify the client to update
         io.emit('reloadCircle');
 
         for (var i in client_list) {
-            io.emit('updateCircle', client_list[i].pos, client_list[i].radius);
+            if (i == socketId) {
+                io.emit('updateOwn', client_list[i].pos, client_list[i].radius);
+            }
+            else {
+                io.emit('updateCircle', client_list[i].pos, client_list[i].radius);
+            }
+        }
+
+        for (var i in food_list) {
+            io.emit('updateFood', food_list[i].pos, food_list[i].radius);
         }
 
         io.emit('drawCircle');
@@ -59,10 +90,10 @@ io.on('connection', function(socket) {
     });
 
     // setting the query interval 100ms
-    function queryPos() {
-        io.emit('queryPos');
-        setTimeout(queryPos, 100);
+    function queryDir() {
+        io.emit('queryDir');
+        setTimeout(queryDir, 100);
     }
-    queryPos();
+    queryDir();
 });
 
