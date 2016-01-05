@@ -81,24 +81,26 @@ io.on('connection', function(socket) {
             // do nothing
             return;
         }
+    });
 
+    socket.on('queryData', function () {
         // notify the client to update
-        io.emit('reloadCircle');
+        socket.emit('reloadCircle');
 
         for (var i in client_list) {
             if (i == socketId) {
-                io.emit('updateOwn', client_list[i].pos, client_list[i].radius);
+                socket.emit('updateOwn', client_list[i].pos, client_list[i].radius);
             }
             else {
-                io.emit('updateCircle', client_list[i].pos, client_list[i].radius);
+                socket.emit('updateCircle', client_list[i].pos, client_list[i].radius);
             }
         }
 
         for (var i in food_list) {
-            io.emit('updateFood', food_list[i].pos, food_list[i].radius);
+            socket.emit('updateFood', food_list[i].pos, food_list[i].radius);
         }
 
-        io.emit('drawCircle');
+        socket.emit('drawCircle');
     });
 
     socket.on('disconnect', function() {
@@ -112,10 +114,10 @@ io.on('connection', function(socket) {
         console.log(pos[0] + ' ' + pos[1]);
     });
 
-    // setting the query interval 100ms
+    // setting the query interval 25ms
     function queryDir() {
-        io.emit('queryDir');
-        setTimeout(queryDir, 100);
+        socket.emit('queryDir');
+        setTimeout(queryDir, 25);
     }
     queryDir();
 });

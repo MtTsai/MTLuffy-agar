@@ -71,6 +71,10 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     // websocket event
+    function queryData() {
+        socket.emit('queryData');
+    }
+
     socket.on('queryDir', function() {
         var x = mouse.pos.x - canvas.width / 2;
         var y = mouse.pos.y - canvas.height / 2;
@@ -110,5 +114,10 @@ document.addEventListener("DOMContentLoaded", function() {
         for (var i in foods) {
             drawCircle(relocation(foods[i].pos, own_circle.pos), foods[i].radius);
         }
+
+        // query data per 100ms
+        setTimeout(queryData, 100);
     });
+
+    queryData();
 });
