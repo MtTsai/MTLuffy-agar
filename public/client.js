@@ -13,7 +13,6 @@ document.addEventListener("DOMContentLoaded", function() {
     var height  = window.innerHeight;
     var socket  = io.connect();
 
-    var cwidth, cheight;
     var ctop = canvas.getBoundingClientRect().top;
     var cleft = canvas.getBoundingClientRect().left;
 
@@ -30,9 +29,6 @@ document.addEventListener("DOMContentLoaded", function() {
         // set canvas to 80% of full browser height, 100% of width
         canvas.width = width;
         canvas.height = height * 80 / 100;
-
-        cwidth = canvas.width;
-        cheight = canvas.height;
     }
 
     // register mouse event handlers
@@ -67,10 +63,17 @@ document.addEventListener("DOMContentLoaded", function() {
         context.stroke();
     }
 
+    function relocation(pos, contrast) {
+        var p = [pos[0] - contrast[0], pos[1] - contrast[1]];
+        p[0] += canvas.width / 2;
+        p[1] += canvas.height/ 2;
+        return p;
+    }
+
     // websocket event
     socket.on('queryDir', function() {
-        var x = mouse.pos.x - own_circle.pos[0];
-        var y = mouse.pos.y - own_circle.pos[1];
+        var x = mouse.pos.x - canvas.width / 2;
+        var y = mouse.pos.y - canvas.height / 2;
         socket.emit('updatePos', [x, y]);
     });
 
@@ -96,16 +99,16 @@ document.addEventListener("DOMContentLoaded", function() {
         context.clearRect(0, 0, canvas.width, canvas.height);
 
         // draw own circle
-        drawCircle([own_circle.pos[0], own_circle.pos[1]], own_circle.radius);
+        drawCircle([canvas.width / 2, canvas.height / 2], own_circle.radius);
 
         // draw circles
         for (var i in circles) {
-            drawCircle([circles[i].pos[0], circles[i].pos[1]], circles[i].radius);
+            drawCircle(relocation(circles[i].pos, own_circle.pos), circles[i].radius);
         }
 
         // draw foods
         for (var i in foods) {
-            drawCircle([foods[i].pos[0], foods[i].pos[1]], foods[i].radius);
+            drawCircle(relocation(foods[i].pos, own_circle.pos), foods[i].radius);
         }
     });
 });

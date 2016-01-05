@@ -34,7 +34,7 @@ function random (low, high) {
 }
 
 /* initialize */
-for (var i = 0; i < 10; i++) {
+for (var i = 0; i < 100; i++) {
     food_list.push({
         pos: [random(0, map.width), random(0, map.height)],
         radius: 5
@@ -44,7 +44,7 @@ for (var i = 0; i < 10; i++) {
 /* Handling webSocket */
 io.on('connection', function(socket) {
     var socketId = socket.id;
-    console.log(socketId + 'is connecting');
+    console.log(socketId + ' is connecting');
     client_list[socketId] = {
         socket: socket,
         pos: [random(0, map.width), random(0, map.height)],
@@ -62,6 +62,24 @@ io.on('connection', function(socket) {
             var movement_y = (dir[1] / distance) * (client_list[socketId].speed);
             client_list[socketId].pos[0] = pos_ori[0] + movement_x;
             client_list[socketId].pos[1] = pos_ori[1] + movement_y;
+
+            // handle marginal case
+            if (client_list[socketId].pos[0] < 0) {
+                client_list[socketId].pos[0] = 0;
+            }
+            else if (client_list[socketId].pos[0] > map.width) {
+                client_list[socketId].pos[0] = map.width;
+            }
+            if (client_list[socketId].pos[1] < 0) {
+                client_list[socketId].pos[1] = 0;
+            }
+            else if (client_list[socketId].pos[1] > map.height) {
+                client_list[socketId].pos[1] = map.height;
+            }
+        }
+        else {
+            // do nothing
+            return;
         }
 
         // notify the client to update
@@ -87,6 +105,11 @@ io.on('connection', function(socket) {
         console.log('Got disconnect!');
 
         delete client_list[socketId];
+    });
+
+    // using for debug
+    socket.on('debug', function(pos) {
+        console.log(pos[0] + ' ' + pos[1]);
     });
 
     // setting the query interval 100ms
