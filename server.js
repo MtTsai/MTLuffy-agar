@@ -37,17 +37,22 @@ function calc_dist(pos1, pos2) {
     return Math.sqrt(Math.pow(pos1[0] - pos2[0], 2) + Math.pow(pos1[1] - pos2[1], 2));
 }
 
+function cal_radius(rad1, rad2 ){
+    return Math.sqrt( (rad1 * rad1) + (rad2 * rad2) );
+}
+
 function eat_balls(id) {
     // TODO: other player (can be eaten or eat others)
 
     // foods
     for (var i in food_list) {
         if (calc_dist(food_list[i].pos, client_list[id].pos) < client_list[id].radius) {
-            client_list[id].radius += food_list[i].radius;
+            client_list[id].radius = cal_radius( client_list[id].radius, food_list[i].radius);
             food_list.splice(i, 1);
         }
    }
 }
+
 
 function gen_foods() {
     // if (food_list.length)

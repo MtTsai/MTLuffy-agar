@@ -86,12 +86,12 @@ document.addEventListener("DOMContentLoaded", function() {
         foods = [];
     });
 
-    socket.on('updateOwn', function (pos, radius) {
-        own_circle = {pos: pos, radius: radius};
+    socket.on('updateOwn', function (_pos, _radius) {
+        own_circle = {pos: _pos, radius: _radius};
     });
 
-    socket.on('updateCircle', function (pos, radius) {
-        circles.push({pos: pos, radius: radius});
+    socket.on('updateCircle', function (_pos, _radius) {
+        circles.push({pos: _pos, radius: _radius});
     });
 
     socket.on('updateFood', function (pos, radius) {
