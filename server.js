@@ -33,6 +33,33 @@ function random (low, high) {
     return Math.random() * (high - low) + low;
 }
 
+function calc_dist(pos1, pos2) {
+    return Math.sqrt(Math.pow(pos1[0] - pos2[0], 2) + Math.pow(pos1[1] - pos2[1], 2));
+}
+
+function eat_balls(id) {
+    // TODO: other player (can be eaten or eat others)
+
+    // foods
+    for (var i in food_list) {
+        if (calc_dist(food_list[i].pos, client_list[id].pos) < client_list[id].radius) {
+            client_list[id].radius += food_list[i].radius;
+            food_list.splice(i, 1);
+        }
+   }
+}
+
+function gen_foods() {
+    // if (food_list.length)
+    food_list.push({
+        pos: [random(0, map.width), random(0, map.height)],
+        radius: 5
+    });
+
+    // generate the food per 10 secs
+    setTimeout(gen_foods, 10000);
+}
+
 /* initialize */
 for (var i = 0; i < 100; i++) {
     food_list.push({
@@ -40,6 +67,7 @@ for (var i = 0; i < 100; i++) {
         radius: 5
     });
 }
+gen_foods();
 
 /* Handling webSocket */
 io.on('connection', function(socket) {
@@ -54,7 +82,7 @@ io.on('connection', function(socket) {
 
     socket.on('updatePos', function(dir) {
         var pos_ori = client_list[socketId].pos;
-        var distance = Math.sqrt(Math.pow(dir[0], 2) + Math.pow(dir[1], 2));
+        var distance = calc_dist(dir, [0, 0]); // Math.sqrt(Math.pow(dir[0], 2) + Math.pow(dir[1], 2));
         
         // distance cannot equal to 0
         if (distance > client_list[socketId].radius) {
@@ -76,6 +104,9 @@ io.on('connection', function(socket) {
             else if (client_list[socketId].pos[1] > map.height) {
                 client_list[socketId].pos[1] = map.height;
             }
+
+            // check is there a ball can be eaten
+            eat_balls(socketId);
         }
         else {
             // do nothing
