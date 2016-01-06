@@ -46,11 +46,10 @@ function eat_balls(id) {
             client_list[id].radius += food_list[i].radius;
             food_list.splice(i, 1);
         }
-   }
+    }
 }
 
 function gen_foods() {
-    // if (food_list.length)
     food_list.push({
         pos: [random(0, map.width), random(0, map.height)],
         radius: 5
@@ -115,9 +114,6 @@ io.on('connection', function(socket) {
     });
 
     socket.on('queryData', function () {
-        // notify the client to update
-        socket.emit('reloadCircle');
-
         for (var i in client_list) {
             if (i == socketId) {
                 socket.emit('updateOwn', client_list[i].pos, client_list[i].radius);

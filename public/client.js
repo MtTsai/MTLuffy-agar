@@ -72,6 +72,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // websocket event
     function queryData() {
+        circles = [];
+        foods = [];
+
         socket.emit('queryData');
     }
 
@@ -79,11 +82,6 @@ document.addEventListener("DOMContentLoaded", function() {
         var x = mouse.pos.x - canvas.width / 2;
         var y = mouse.pos.y - canvas.height / 2;
         socket.emit('updatePos', [x, y]);
-    });
-
-    socket.on('reloadCircle', function () {
-        circles = [];
-        foods = [];
     });
 
     socket.on('updateOwn', function (pos, radius) {
