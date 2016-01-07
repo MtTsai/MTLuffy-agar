@@ -37,17 +37,31 @@ function calc_dist(pos1, pos2) {
     return Math.sqrt(Math.pow(pos1[0] - pos2[0], 2) + Math.pow(pos1[1] - pos2[1], 2));
 }
 
-function eat_balls(id) {
+function eat_balls(id, bid) {
     // TODO: other player (can be eaten or eat others)
 
     // foods
     for (var i in food_list) {
-        if (calc_dist(food_list[i].pos, client_list[id].pos) < client_list[id].radius) {
-            client_list[id].score = client_list[id].score + food_list[i].score;
-            client_list[id].radius = Math.sqrt(client_list[id].score);
+        if (calc_dist(food_list[i].pos, client_list[id].list[bid].pos) < client_list[id].list[bid].radius) {
+            client_list[id].list[bid].score = client_list[id].list[bid].score + food_list[i].score;
+            client_list[id].list[bid].radius = Math.sqrt(client_list[id].list[bid].score);
             food_list.splice(i, 1);
         }
     }
+}
+
+function updateGravity(id) {
+    var total_score = 0;
+    var total_x = 0;
+    var total_y = 0;
+
+    for (var ballId in client_list[id].list) {
+        total_score += client_list[id].list[ballId].score;
+        total_x += client_list[id].list[ballId].pos[0] * client_list[id].list[ballId].score;
+        total_y += client_list[id].list[ballId].pos[1] * client_list[id].list[ballId].score;
+    }
+
+    client_list[id].gravity = [total_x / total_score, total_y / total_score];
 }
 
 
@@ -75,42 +89,52 @@ for (var i = 0; i < 100; i++) {
 /* Handling webSocket */
 io.on('connection', function(socket) {
     var socketId = socket.id;
+    var random_pos = [random(0, map.width), random(0, map.height)];
     console.log(socketId + ' is connecting');
     client_list[socketId] = {
         socket: socket,
-        pos: [random(0, map.width), random(0, map.height)],
-        radius: 10,
-        speed: 10,
-        score: 100
+        gravity: random_pos, // center of gravity
+        list: [{
+            pos: random_pos,
+            radius: 10,
+            speed: 40,
+            score: 100
+        }]
     };
 
     socket.on('updatePos', function(dir) {
-        var pos_ori = client_list[socketId].pos;
-        var distance = calc_dist(dir, [0, 0]); // Math.sqrt(Math.pow(dir[0], 2) + Math.pow(dir[1], 2));
+        var distance = calc_dist(dir, [0, 0]);
+        var unit_vector = [dir[0] / distance, dir[1] / distance];
         
         // distance cannot equal to 0
-        if (distance > client_list[socketId].radius) {
-            var movement_x = (dir[0] / distance) * (client_list[socketId].speed);
-            var movement_y = (dir[1] / distance) * (client_list[socketId].speed);
-            client_list[socketId].pos[0] = pos_ori[0] + movement_x;
-            client_list[socketId].pos[1] = pos_ori[1] + movement_y;
+        if (distance > 10) {
+            for (var ballId in client_list[socketId].list) {
+                var pos_ori = client_list[socketId].list[ballId].pos;
+                var movement_x = unit_vector[0] * (client_list[socketId].list[ballId].speed);
+                var movement_y = unit_vector[1] * (client_list[socketId].list[ballId].speed);
+                client_list[socketId].list[ballId].pos[0] = pos_ori[0] + movement_x;
+                client_list[socketId].list[ballId].pos[1] = pos_ori[1] + movement_y;
 
-            // handle marginal case
-            if (client_list[socketId].pos[0] < 0) {
-                client_list[socketId].pos[0] = 0;
-            }
-            else if (client_list[socketId].pos[0] > map.width) {
-                client_list[socketId].pos[0] = map.width;
-            }
-            if (client_list[socketId].pos[1] < 0) {
-                client_list[socketId].pos[1] = 0;
-            }
-            else if (client_list[socketId].pos[1] > map.height) {
-                client_list[socketId].pos[1] = map.height;
+                // handle marginal case
+                if (client_list[socketId].list[ballId].pos[0] < 0) {
+                    client_list[socketId].list[ballId].pos[0] = 0;
+                }
+                else if (client_list[socketId].list[ballId].pos[0] > map.width) {
+                    client_list[socketId].list[ballId].pos[0] = map.width;
+                }
+                if (client_list[socketId].list[ballId].pos[1] < 0) {
+                    client_list[socketId].list[ballId].pos[1] = 0;
+                }
+                else if (client_list[socketId].list[ballId].pos[1] > map.height) {
+                    client_list[socketId].list[ballId].pos[1] = map.height;
+                }
+
+                // check is there a ball can be eaten
+                eat_balls(socketId, ballId);
             }
 
-            // check is there a ball can be eaten
-            eat_balls(socketId);
+            // update gravity
+            updateGravity(socketId);
         }
         else {
             // do nothing
@@ -121,10 +145,18 @@ io.on('connection', function(socket) {
     socket.on('queryData', function () {
         for (var i in client_list) {
             if (i == socketId) {
-                socket.emit('updateOwn', client_list[i].pos, client_list[i].radius);
+                socket.emit('updateGravity', client_list[i].gravity);
+
+                for (var ballId in client_list[i].list) {
+                    socket.emit('updateOwn', client_list[i].list[ballId].pos,
+                                             client_list[i].list[ballId].radius);
+                }
             }
             else {
-                socket.emit('updateCircle', client_list[i].pos, client_list[i].radius);
+                for (var ballId in client_list[i].list) {
+                    socket.emit('updateCircle', client_list[i].list[ballId].pos,
+                                                client_list[i].list[ballId].radius);
+                }
             }
         }
 
@@ -141,17 +173,48 @@ io.on('connection', function(socket) {
         delete client_list[socketId];
     });
 
+    socket.on('skill-split', function(dir) {
+        var distance = calc_dist(dir, [0, 0]);
+        var unit_vector = [dir[0] / distance, dir[1] / distance];
+        var split_list = [];
+
+        console.log(unit_vector);
+
+        for (var ballId in client_list[socketId].list) {
+            if (client_list[socketId].list[ballId].score > 400) {
+                client_list[socketId].list[ballId].score /= 2;
+                client_list[socketId].list[ballId].radius =
+                    Math.sqrt(client_list[socketId].list[ballId].score);
+
+                client_list[socketId].list[ballId].pos[0] -= 100 * unit_vector[0];
+                client_list[socketId].list[ballId].pos[1] -= 100 * unit_vector[1];
+
+                split_list.push({
+                        pos: [
+                            client_list[socketId].list[ballId].pos[0] + 200 * unit_vector[0],
+                            client_list[socketId].list[ballId].pos[1] + 200 * unit_vector[1]
+                        ],
+                        radius: client_list[socketId].list[ballId].radius,
+                        speed: client_list[socketId].list[ballId].speed,
+                        score: client_list[socketId].list[ballId].score
+                });
+            }
+        }
+
+        // append split list
+        client_list[socketId].list = client_list[socketId].list.concat(split_list);
+    });
+
     // using for debug
     socket.on('debug', function(pos) {
         console.log(pos[0] + ' ' + pos[1]);
     });
-
 });
 
-// setting the query interval 25ms
+// setting the query interval 100ms
 function queryDir() {
     io.emit('queryDir');
-    setTimeout(queryDir, 25);
+    setTimeout(queryDir, 100);
 }
 queryDir();
 

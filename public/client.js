@@ -16,10 +16,8 @@ document.addEventListener("DOMContentLoaded", function() {
     var ctop = canvas.getBoundingClientRect().top;
     var cleft = canvas.getBoundingClientRect().left;
 
-    var own_circle = {
-            pos: [0, 0],
-            radius: 0
-        };
+    var gravity = [0, 0];
+    var own_circle = [];
     var circles = [];
     var foods = [];
 
@@ -72,6 +70,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // websocket event
     function queryData() {
+        own_circle = [];
         circles = [];
         foods = [];
 
@@ -84,9 +83,12 @@ document.addEventListener("DOMContentLoaded", function() {
         socket.emit('updatePos', [x, y]);
     });
 
+    socket.on('updateGravity', function (_gravity) {
+        gravity = _gravity;
+    });
 
     socket.on('updateOwn', function (_pos, _radius) {
-        own_circle = {pos: _pos, radius: _radius};
+        own_circle.push({pos: _pos, radius: _radius});
     });
 
     socket.on('updateCircle', function (_pos, _radius) {
@@ -102,21 +104,35 @@ document.addEventListener("DOMContentLoaded", function() {
         context.clearRect(0, 0, canvas.width, canvas.height);
 
         // draw own circle
-        drawCircle([canvas.width / 2, canvas.height / 2], own_circle.radius);
+        for (var i in  own_circle) {
+            drawCircle(relocation(own_circle[i].pos, gravity), own_circle[i].radius);
+        }
 
         // draw circles
         for (var i in circles) {
-            drawCircle(relocation(circles[i].pos, own_circle.pos), circles[i].radius);
+            drawCircle(relocation(circles[i].pos, gravity), circles[i].radius);
         }
 
         // draw foods
         for (var i in foods) {
-            drawCircle(relocation(foods[i].pos, own_circle.pos), foods[i].radius);
+            drawCircle(relocation(foods[i].pos, gravity), foods[i].radius);
         }
 
         // query data per 100ms
         setTimeout(queryData, 100);
     });
+
+    // key event
+    window.onkeyup = function(e) {
+        var key = e.keyCode ? e.keyCode : e.which;
+
+        if (key == 32) { // space
+            var x = mouse.pos.x - canvas.width / 2;
+            var y = mouse.pos.y - canvas.height / 2;
+
+            socket.emit('skill-split', [x, y]);
+        }
+    }
 
     queryData();
 });
