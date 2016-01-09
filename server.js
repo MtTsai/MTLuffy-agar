@@ -38,30 +38,40 @@ function calc_dist(pos1, pos2) {
 }
 
 function eat_balls(id, bid) {
+    var player = client_list[id];
+    var ball = player.list[bid];
+
     // TODO: other player (can be eaten or eat others)
 
     // foods
     for (var i in food_list) {
-        if (calc_dist(food_list[i].pos, client_list[id].list[bid].pos) < client_list[id].list[bid].radius) {
-            client_list[id].list[bid].score = client_list[id].list[bid].score + food_list[i].score;
-            client_list[id].list[bid].radius = Math.sqrt(client_list[id].list[bid].score);
+        var _food = food_list[i];
+
+        if (calc_dist(_food.pos, ball.pos) < ball.radius) {
+            ball.score = ball.score +_food.score;
+            ball.radius = Math.sqrt(ball.score);
+
+            // delete the eaten food
             food_list.splice(i, 1);
         }
     }
 }
 
 function updateGravity(id) {
+    var player = client_list[id];
     var total_score = 0;
     var total_x = 0;
     var total_y = 0;
 
-    for (var ballId in client_list[id].list) {
-        total_score += client_list[id].list[ballId].score;
-        total_x += client_list[id].list[ballId].pos[0] * client_list[id].list[ballId].score;
-        total_y += client_list[id].list[ballId].pos[1] * client_list[id].list[ballId].score;
+    for (var ballId in player.list) {
+        var _ball = player.list[ballId];
+
+        total_score += _ball.score;
+        total_x += _ball.pos[0] * _ball.score;
+        total_y += _ball.pos[1] * _ball.score;
     }
 
-    client_list[id].gravity = [total_x / total_score, total_y / total_score];
+    player.gravity = [total_x / total_score, total_y / total_score];
 }
 
 
@@ -103,30 +113,33 @@ io.on('connection', function(socket) {
     };
 
     socket.on('updatePos', function(dir) {
+        var player = client_list[socketId];
         var distance = calc_dist(dir, [0, 0]);
         var unit_vector = [dir[0] / distance, dir[1] / distance];
         
         // distance cannot equal to 0
         if (distance > 10) {
-            for (var ballId in client_list[socketId].list) {
-                var pos_ori = client_list[socketId].list[ballId].pos;
-                var movement_x = unit_vector[0] * (client_list[socketId].list[ballId].speed);
-                var movement_y = unit_vector[1] * (client_list[socketId].list[ballId].speed);
-                client_list[socketId].list[ballId].pos[0] = pos_ori[0] + movement_x;
-                client_list[socketId].list[ballId].pos[1] = pos_ori[1] + movement_y;
+            for (var ballId in player.list) {
+                var _ball = player.list[ballId];
+
+                var pos_ori = _ball.pos;
+                var movement_x = unit_vector[0] * (_ball.speed);
+                var movement_y = unit_vector[1] * (_ball.speed);
+                _ball.pos[0] = pos_ori[0] + movement_x;
+                _ball.pos[1] = pos_ori[1] + movement_y;
 
                 // handle marginal case
-                if (client_list[socketId].list[ballId].pos[0] < 0) {
-                    client_list[socketId].list[ballId].pos[0] = 0;
+                if (_ball.pos[0] < 0) {
+                    _ball.pos[0] = 0;
                 }
-                else if (client_list[socketId].list[ballId].pos[0] > map.width) {
-                    client_list[socketId].list[ballId].pos[0] = map.width;
+                else if (_ball.pos[0] > map.width) {
+                    _ball.pos[0] = map.width;
                 }
-                if (client_list[socketId].list[ballId].pos[1] < 0) {
-                    client_list[socketId].list[ballId].pos[1] = 0;
+                if (_ball.pos[1] < 0) {
+                    _ball.pos[1] = 0;
                 }
-                else if (client_list[socketId].list[ballId].pos[1] > map.height) {
-                    client_list[socketId].list[ballId].pos[1] = map.height;
+                else if (_ball.pos[1] > map.height) {
+                    _ball.pos[1] = map.height;
                 }
 
                 // check is there a ball can be eaten
@@ -144,24 +157,30 @@ io.on('connection', function(socket) {
 
     socket.on('queryData', function () {
         for (var i in client_list) {
-            if (i == socketId) {
-                socket.emit('updateGravity', client_list[i].gravity);
+            var player_t = client_list[i];
 
-                for (var ballId in client_list[i].list) {
-                    socket.emit('updateOwn', client_list[i].list[ballId].pos,
-                                             client_list[i].list[ballId].radius);
+            if (i == socketId) {
+                socket.emit('updateGravity', player_t.gravity);
+
+                for (var ballId in player_t.list) {
+                    var _ball = player_t.list[ballId];
+
+                    socket.emit('updateOwn', _ball);
                 }
             }
             else {
-                for (var ballId in client_list[i].list) {
-                    socket.emit('updateCircle', client_list[i].list[ballId].pos,
-                                                client_list[i].list[ballId].radius);
+                for (var ballId in player_t.list) {
+                    var _ball = player_t.list[ballId];
+
+                    socket.emit('updateCircle', _ball);
                 }
             }
         }
 
         for (var i in food_list) {
-            socket.emit('updateFood', food_list[i].pos, food_list[i].radius);
+            var _food = food_list[i];
+
+            socket.emit('updateFood', _food);
         }
 
         socket.emit('drawCircle');
@@ -174,35 +193,37 @@ io.on('connection', function(socket) {
     });
 
     socket.on('skill-split', function(dir) {
+        var player = client_list[socketId];
         var distance = calc_dist(dir, [0, 0]);
         var unit_vector = [dir[0] / distance, dir[1] / distance];
         var split_list = [];
 
         console.log(unit_vector);
 
-        for (var ballId in client_list[socketId].list) {
-            if (client_list[socketId].list[ballId].score > 400) {
-                client_list[socketId].list[ballId].score /= 2;
-                client_list[socketId].list[ballId].radius =
-                    Math.sqrt(client_list[socketId].list[ballId].score);
+        for (var ballId in player.list) {
+            var _ball = player.list[ballId];
 
-                client_list[socketId].list[ballId].pos[0] -= 100 * unit_vector[0];
-                client_list[socketId].list[ballId].pos[1] -= 100 * unit_vector[1];
+            if (_ball.score > 400) {
+                _ball.score /= 2;
+                _ball.radius = Math.sqrt(_ball.score);
+
+                _ball.pos[0] -= 100 * unit_vector[0];
+                _ball.pos[1] -= 100 * unit_vector[1];
 
                 split_list.push({
                         pos: [
-                            client_list[socketId].list[ballId].pos[0] + 200 * unit_vector[0],
-                            client_list[socketId].list[ballId].pos[1] + 200 * unit_vector[1]
+                            _ball.pos[0] + 200 * unit_vector[0],
+                            _ball.pos[1] + 200 * unit_vector[1]
                         ],
-                        radius: client_list[socketId].list[ballId].radius,
-                        speed: client_list[socketId].list[ballId].speed,
-                        score: client_list[socketId].list[ballId].score
+                        radius: _ball.radius,
+                        speed: _ball.speed,
+                        score: _ball.score
                 });
             }
         }
 
         // append split list
-        client_list[socketId].list = client_list[socketId].list.concat(split_list);
+        player.list = player.list.concat(split_list);
     });
 
     // using for debug

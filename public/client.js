@@ -87,16 +87,16 @@ document.addEventListener("DOMContentLoaded", function() {
         gravity = _gravity;
     });
 
-    socket.on('updateOwn', function (_pos, _radius) {
-        own_circle.push({pos: _pos, radius: _radius});
+    socket.on('updateOwn', function (_own) {
+        own_circle.push(_own);
     });
 
-    socket.on('updateCircle', function (_pos, _radius) {
-        circles.push({pos: _pos, radius: _radius});
+    socket.on('updateCircle', function (_circle) {
+        circles.push(_circle);
     });
 
-    socket.on('updateFood', function (pos, radius) {
-        foods.push({pos: pos, radius: radius});
+    socket.on('updateFood', function (_food) {
+        foods.push(_food);
     });
 
     socket.on('drawCircle', function () {
