@@ -5,7 +5,7 @@ var express = require('express'),
 
 var server = http.createServer(app);
 var io = require('socket.io').listen(server);
-var port = 6145;
+var port = 5566;
 
 server.listen(port);
 console.log("Server running on port: " + port);

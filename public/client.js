@@ -79,9 +79,12 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // websocket event
     function queryData() {
-        game_updator.own_circle = [];
-        game_updator.circles = [];
-        game_updator.foods = [];
+        game_updator = {
+            gravity: [0, 0],
+            own_circle: [],
+            circles: [],
+            foods: []
+        };
 
         socket.emit('queryData');
     }
@@ -111,6 +114,23 @@ document.addEventListener("DOMContentLoaded", function() {
     socket.on('drawCircle', function () {
         game = game_updator;
 
+        // query data per 100ms
+        setTimeout(queryData, 100);
+    });
+
+    // key event
+    window.onkeyup = function(e) {
+        var key = e.keyCode ? e.keyCode : e.which;
+
+        if (key == 32) { // space
+            var x = mouse.pos.x - canvas.width / 2;
+            var y = mouse.pos.y - canvas.height / 2;
+
+            socket.emit('skill-split', [x, y]);
+        }
+    }
+
+    function updateFrame() {
         // clear the canvas
         context.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -134,20 +154,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
             drawCircle(relocation(_food.pos, game.gravity), _food.radius);
         }
-    });
-
-    // key event
-    window.onkeyup = function(e) {
-        var key = e.keyCode ? e.keyCode : e.which;
-
-        if (key == 32) { // space
-            var x = mouse.pos.x - canvas.width / 2;
-            var y = mouse.pos.y - canvas.height / 2;
-
-            socket.emit('skill-split', [x, y]);
-        }
     }
 
-    // query data per 100ms
-    setInterval(queryData, 100);
+    // do the query first time
+    queryData();
+
+    // set update frame with interval 100ms
+    setInterval(updateFrame, 100);
 });
