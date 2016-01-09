@@ -5,7 +5,7 @@ var express = require('express'),
 
 var server = http.createServer(app);
 var io = require('socket.io').listen(server);
-var port = 5566;
+var port = 6145;
 
 server.listen(port);
 console.log("Server running on port: " + port);
@@ -123,6 +123,7 @@ io.on('connection', function(socket) {
                 var _ball = player.list[ballId];
 
                 var pos_ori = _ball.pos;
+                _ball.speed = 40 * (10 / _ball.radius);
                 var movement_x = unit_vector[0] * (_ball.speed);
                 var movement_y = unit_vector[1] * (_ball.speed);
                 _ball.pos[0] = pos_ori[0] + movement_x;
