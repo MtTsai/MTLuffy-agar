@@ -16,10 +16,19 @@ document.addEventListener("DOMContentLoaded", function() {
     var ctop = canvas.getBoundingClientRect().top;
     var cleft = canvas.getBoundingClientRect().left;
 
-    var gravity = [0, 0];
-    var own_circle = [];
-    var circles = [];
-    var foods = [];
+    var game = {
+        gravity: [0, 0],
+        own_circle: [],
+        circles: [],
+        foods: []
+    };
+
+    var game_updator = {
+        gravity: [0, 0],
+        own_circle: [],
+        circles: [],
+        foods: []
+    };
 
     window.onload = displayWindowSize;
 
@@ -70,9 +79,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // websocket event
     function queryData() {
-        own_circle = [];
-        circles = [];
-        foods = [];
+        game_updator.own_circle = [];
+        game_updator.circles = [];
+        game_updator.foods = [];
 
         socket.emit('queryData');
     }
@@ -84,42 +93,47 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     socket.on('updateGravity', function (_gravity) {
-        gravity = _gravity;
+        game_updator.gravity = _gravity;
     });
 
     socket.on('updateOwn', function (_own) {
-        own_circle.push(_own);
+        game_updator.own_circle.push(_own);
     });
 
     socket.on('updateCircle', function (_circle) {
-        circles.push(_circle);
+        game_updator.circles.push(_circle);
     });
 
     socket.on('updateFood', function (_food) {
-        foods.push(_food);
+        game_updator.foods.push(_food);
     });
 
     socket.on('drawCircle', function () {
+        game = game_updator;
+
         // clear the canvas
         context.clearRect(0, 0, canvas.width, canvas.height);
 
         // draw own circle
-        for (var i in  own_circle) {
-            drawCircle(relocation(own_circle[i].pos, gravity), own_circle[i].radius);
+        for (var i in  game.own_circle) {
+            var _ball = game.own_circle[i];
+
+            drawCircle(relocation(_ball.pos, game.gravity), _ball.radius);
         }
 
         // draw circles
-        for (var i in circles) {
-            drawCircle(relocation(circles[i].pos, gravity), circles[i].radius);
+        for (var i in game.circles) {
+            var _ball = game.circles[i];
+
+            drawCircle(relocation(_ball.pos, game.gravity), _ball.radius);
         }
 
         // draw foods
-        for (var i in foods) {
-            drawCircle(relocation(foods[i].pos, gravity), foods[i].radius);
-        }
+        for (var i in game.foods) {
+            var _food = game.foods[i];
 
-        // query data per 100ms
-        setTimeout(queryData, 100);
+            drawCircle(relocation(_food.pos, game.gravity), _food.radius);
+        }
     });
 
     // key event
@@ -134,5 +148,6 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
 
-    queryData();
+    // query data per 100ms
+    setInterval(queryData, 100);
 });

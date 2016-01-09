@@ -123,11 +123,13 @@ io.on('connection', function(socket) {
                 var _ball = player.list[ballId];
 
                 var pos_ori = _ball.pos;
-                _ball.speed = 40 * (10 / _ball.radius);
                 var movement_x = unit_vector[0] * (_ball.speed);
                 var movement_y = unit_vector[1] * (_ball.speed);
                 _ball.pos[0] = pos_ori[0] + movement_x;
                 _ball.pos[1] = pos_ori[1] + movement_y;
+
+                // change speed of ball
+                _ball.speed = 40 * (10 / _ball.radius);
 
                 // handle marginal case
                 if (_ball.pos[0] < 0) {
@@ -236,7 +238,6 @@ io.on('connection', function(socket) {
 // setting the query interval 100ms
 function queryDir() {
     io.emit('queryDir');
-    setTimeout(queryDir, 100);
 }
-queryDir();
+setInterval(queryDir, 100);
 
