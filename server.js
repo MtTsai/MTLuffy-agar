@@ -37,6 +37,24 @@ function calc_dist(pos1, pos2) {
     return Math.sqrt(Math.pow(pos1[0] - pos2[0], 2) + Math.pow(pos1[1] - pos2[1], 2));
 }
 
+/* 2D operation */
+function Add2D(v1, v2) {
+    return [v1[0] + v2[0], v1[1] + v2[1]];
+}
+
+function Minus2D(v1, v2) {
+    return [v1[0] - v2[0], v1[1] - v2[1]];
+}
+
+function Mul2D(v1, m) {
+    return [v1[0] * m, v1[1] * m];
+}
+
+function Div2D(v1, m) {
+    return [v1[0] / m, v1[1] / m];
+}
+
+/* player operation */
 function eat_balls(id, bid) {
     var player = client_list[id];
     var ball = player.list[bid];
@@ -50,6 +68,9 @@ function eat_balls(id, bid) {
         if (calc_dist(_food.pos, ball.pos) < ball.radius) {
             ball.score = ball.score +_food.score;
             ball.radius = Math.sqrt(ball.score);
+
+            // change speed of ball
+            ball.speed = 40 * (10 / ball.radius);
 
             // delete the eaten food
             food_list.splice(i, 1);
@@ -74,7 +95,43 @@ function updateGravity(id) {
     player.gravity = [total_x / total_score, total_y / total_score];
 }
 
+function updatePlayerPosition(id) {
+    var player = client_list[id];
 
+    for (var ballId in player.list) {
+        var _ball = player.list[ballId];
+
+        // update the ball position
+        var movement = Mul2D(_ball.dir, _ball.speed);
+
+        _ball.pos = Add2D(_ball.pos, movement);
+
+        // handle marginal case
+        if (_ball.pos[0] < 0) {
+            _ball.pos[0] = 0;
+        }
+        else if (_ball.pos[0] > map.width) {
+            _ball.pos[0] = map.width;
+        }
+        if (_ball.pos[1] < 0) {
+            _ball.pos[1] = 0;
+        }
+        else if (_ball.pos[1] > map.height) {
+            _ball.pos[1] = map.height;
+        }
+
+        // check is there a ball can be eaten
+        eat_balls(id, ballId);
+    }
+}
+
+function updateAllPosition() {
+    for (var id in client_list) {
+        updatePlayerPosition(id);
+    }
+}
+
+/* food operation */
 function food_create() {
     food_list.push({
         pos: [random(0, map.width), random(0, map.height)],
@@ -97,6 +154,10 @@ for (var i = 0; i < 100; i++) {
 }
 
 /* Handling webSocket */
+function queryDir() {
+    io.emit('queryDir');
+}
+
 io.on('connection', function(socket) {
     var socketId = socket.id;
     var random_pos = [random(0, map.width), random(0, map.height)];
@@ -108,54 +169,29 @@ io.on('connection', function(socket) {
             pos: random_pos,
             radius: 10,
             speed: 40,
+            dir: [0, 0], // unit vector
             score: 100
         }]
     };
 
     socket.on('updatePos', function(dir) {
         var player = client_list[socketId];
-        var distance = calc_dist(dir, [0, 0]);
-        var unit_vector = [dir[0] / distance, dir[1] / distance];
         
         // distance cannot equal to 0
-        if (distance > 10) {
-            for (var ballId in player.list) {
-                var _ball = player.list[ballId];
+        for (var ballId in player.list) {
+            var _ball = player.list[ballId];
+            var _ball_dir = Minus2D(dir, Minus2D(_ball.pos, player.gravity));
+            var distance = calc_dist(_ball_dir, [0, 0]);
 
-                var pos_ori = _ball.pos;
-                var movement_x = unit_vector[0] * (_ball.speed);
-                var movement_y = unit_vector[1] * (_ball.speed);
-                _ball.pos[0] = pos_ori[0] + movement_x;
-                _ball.pos[1] = pos_ori[1] + movement_y;
-
-                // change speed of ball
-                _ball.speed = 40 * (10 / _ball.radius);
-
-                // handle marginal case
-                if (_ball.pos[0] < 0) {
-                    _ball.pos[0] = 0;
-                }
-                else if (_ball.pos[0] > map.width) {
-                    _ball.pos[0] = map.width;
-                }
-                if (_ball.pos[1] < 0) {
-                    _ball.pos[1] = 0;
-                }
-                else if (_ball.pos[1] > map.height) {
-                    _ball.pos[1] = map.height;
-                }
-
-                // check is there a ball can be eaten
-                eat_balls(socketId, ballId);
-            }
-
-            // update gravity
-            updateGravity(socketId);
+            // if distance > 10 then get the "unit vector" of dir
+            // else ball will stop
+            _ball.dir = (distance > 10) ? Div2D(_ball_dir, distance) : [0, 0];
         }
-        else {
-            // do nothing
-            return;
-        }
+
+        updatePlayerPosition(socketId);
+
+        // update gravity
+        updateGravity(socketId);
     });
 
     socket.on('queryData', function () {
@@ -198,7 +234,7 @@ io.on('connection', function(socket) {
     socket.on('skill-split', function(dir) {
         var player = client_list[socketId];
         var distance = calc_dist(dir, [0, 0]);
-        var unit_vector = [dir[0] / distance, dir[1] / distance];
+        var unit_vector = Div2D(dir, distance);
         var split_list = [];
 
         console.log(unit_vector);
@@ -210,14 +246,14 @@ io.on('connection', function(socket) {
                 _ball.score /= 2;
                 _ball.radius = Math.sqrt(_ball.score);
 
-                _ball.pos[0] -= 100 * unit_vector[0];
-                _ball.pos[1] -= 100 * unit_vector[1];
+                // change speed of ball
+                _ball.speed = 40 * (10 / _ball.radius);
+
+
+                _ball.pos = Minus2D(_ball.pos, Mul2D(unit_vector, 100));
 
                 split_list.push({
-                        pos: [
-                            _ball.pos[0] + 200 * unit_vector[0],
-                            _ball.pos[1] + 200 * unit_vector[1]
-                        ],
+                        pos: Add2D(_ball.pos, Mul2D(unit_vector, 200)),
                         radius: _ball.radius,
                         speed: _ball.speed,
                         score: _ball.score
@@ -236,8 +272,8 @@ io.on('connection', function(socket) {
 });
 
 // setting the query interval 100ms
-function queryDir() {
-    io.emit('queryDir');
-}
 setInterval(queryDir, 100);
+
+// setting the position update interval 100ms
+// setInterval(updateAllPosition, 100);
 
