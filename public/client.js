@@ -1,3 +1,20 @@
+/* 2D operation */
+function Add2D(v1, v2) {
+    return [v1[0] + v2[0], v1[1] + v2[1]];
+}
+
+function Minus2D(v1, v2) {
+    return [v1[0] - v2[0], v1[1] - v2[1]];
+}
+
+function Mul2D(v1, m) {
+    return [v1[0] * m, v1[1] * m];
+}
+
+function Div2D(v1, m) {
+    return [v1[0] / m, v1[1] / m];
+}
+
 document.addEventListener("DOMContentLoaded", function() {
     var mouse = { 
         click: false,
@@ -70,11 +87,18 @@ document.addEventListener("DOMContentLoaded", function() {
         context.stroke();
     }
 
-    function relocation(pos, contrast) {
-        var p = [pos[0] - contrast[0], pos[1] - contrast[1]];
-        p[0] += canvas.width / 2;
-        p[1] += canvas.height/ 2;
-        return p;
+    function relocation(pos, contrast, rate) {
+        var _position = Mul2D(Minus2D(pos, contrast), rate);
+
+        // move to center of canvas
+        return Add2D(_position, [canvas.width / 2, canvas.height / 2]);
+    }
+
+    function drawBall(_pos, _radius, _rate) {
+        var posInCanvas = relocation(_pos, game.gravity, _rate);
+        var radiusInCanvas = _radius * _rate;
+
+        drawCircle(posInCanvas, radiusInCanvas);
     }
 
     // websocket event
@@ -130,7 +154,25 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
 
+    function getTotalScore() {
+        var total_score = 0;
+
+        for (var i in game.own_circle) {
+            var _ball = game.own_circle[i];
+
+            total_score += _ball.score;
+        }
+
+        return total_score;
+    }
+
+    function getAmplifyRate(score) {
+        return Math.pow(90000 / getTotalScore(), (1 / 8));
+    }
+
     function updateFrame() {
+        var rate = getAmplifyRate();
+
         // clear the canvas
         context.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -138,21 +180,21 @@ document.addEventListener("DOMContentLoaded", function() {
         for (var i in  game.own_circle) {
             var _ball = game.own_circle[i];
 
-            drawCircle(relocation(_ball.pos, game.gravity), _ball.radius);
+            drawBall(_ball.pos, _ball.radius, rate);
         }
 
         // draw circles
         for (var i in game.circles) {
             var _ball = game.circles[i];
 
-            drawCircle(relocation(_ball.pos, game.gravity), _ball.radius);
+            drawBall(_ball.pos, _ball.radius, rate);
         }
 
         // draw foods
         for (var i in game.foods) {
             var _food = game.foods[i];
 
-            drawCircle(relocation(_food.pos, game.gravity), _food.radius);
+            drawBall(_food.pos, _food.radius, rate);
         }
     }
 
