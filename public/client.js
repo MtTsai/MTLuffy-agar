@@ -33,6 +33,13 @@ document.addEventListener("DOMContentLoaded", function() {
     var ctop = canvas.getBoundingClientRect().top;
     var cleft = canvas.getBoundingClientRect().left;
 
+    // game related
+    var settings = {
+        clk: 100, // server query dir per 100ms
+        emuRate: 1 // emulation of movement per clk
+    };
+    settings.frameRate = settings.clk / settings.emuRate; // ms per frame
+
     var game = {
         gravity: [0, 0],
         own_circle: [],
@@ -162,7 +169,7 @@ document.addEventListener("DOMContentLoaded", function() {
         game = game_updator;
 
         // query data per 100ms
-        setTimeout(queryData, 100);
+        setTimeout(queryData, settings.clk);
     });
 
     // key event
@@ -191,6 +198,45 @@ document.addEventListener("DOMContentLoaded", function() {
 
     function getAmplifyRate(score) {
         return Math.pow(90000 / getTotalScore(), (1 / 8));
+    }
+
+    function emulatorMove(_ball) {
+        var movement = Mul2D(_ball.dir, (_ball.speed / 10) / settings.emuRate);
+        _ball.pos = Add2D(_ball.pos, movement);
+    }
+
+    function updateGravity() {
+        var total_score = 0;
+        var total_x = 0;
+        var total_y = 0;
+
+        for (var ballId in game.own_circle) {
+            var _ball = game.own_circle[ballId];
+
+            total_score += _ball.score;
+            total_x += _ball.pos[0] * _ball.score;
+            total_y += _ball.pos[1] * _ball.score;
+        }
+
+        game.gravity = [total_x / total_score, total_y / total_score];
+    }
+
+    function emulation() {
+        // own circle
+        for (var i in  game.own_circle) {
+            var _ball = game.own_circle[i];
+
+            emulatorMove(_ball);
+        }
+
+        // other circles
+        for (var i in game.circles) {
+            var _ball = game.circles[i];
+
+            emulatorMove(_ball);
+        }
+
+        updateGravity();
     }
 
     function updateFrame() {
@@ -225,5 +271,5 @@ document.addEventListener("DOMContentLoaded", function() {
     queryData();
 
     // set update frame with interval 100ms
-    setInterval(updateFrame, 100);
+    setInterval(updateFrame, settings.frameRate);
 });
