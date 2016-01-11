@@ -124,11 +124,21 @@ document.addEventListener("DOMContentLoaded", function() {
         return Add2D(_position, [canvas.width / 2, canvas.height / 2]);
     }
 
+    function ballInCanvas(_pos, _radius) {
+        if ((_pos[0] > (0 - _radius) && _pos[0] < (canvas.width + _radius)) &&
+            (_pos[1] > (0 - _radius) && _pos[1] < (canvas.height + _radius))) {
+            return true;
+        }
+        return false;
+    }
+
     function drawBall(_ball, _rate) {
         var posInCanvas = relocation(_ball.pos, game.gravity, _rate);
         var radiusInCanvas = _ball.radius * _rate;
 
-        drawCircle(posInCanvas, radiusInCanvas, _ball.imgid);
+        if (ballInCanvas(posInCanvas, radiusInCanvas)) {
+            drawCircle(posInCanvas, radiusInCanvas, _ball.imgid);
+        }
     }
 
     // websocket event
