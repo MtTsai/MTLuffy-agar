@@ -127,6 +127,9 @@ function updatePlayerPosition(id) {
         // check is there a ball can be eaten
         eat_balls(id, ballId);
     }
+
+    // update gravity
+    updateGravity(id);
 }
 
 function updateAllPosition() {
@@ -194,11 +197,6 @@ io.on('connection', function(socket) {
             // else ball will stop
             _ball.dir = (distance > 10) ? Div2D(_ball_dir, distance) : [0, 0];
         }
-
-        updatePlayerPosition(socketId);
-
-        // update gravity
-        updateGravity(socketId);
     });
 
     socket.on('queryData', function () {
@@ -282,5 +280,5 @@ io.on('connection', function(socket) {
 setInterval(queryDir, 100);
 
 // setting the position update interval 100ms
-// setInterval(updateAllPosition, 100);
+setInterval(updateAllPosition, 100);
 
