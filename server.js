@@ -33,6 +33,10 @@ function random (low, high) {
     return Math.random() * (high - low) + low;
 }
 
+function randomInt (low, high) {
+    return Math.floor(Math.random() * (high - low) + low);
+}
+
 function calc_dist(pos1, pos2) {
     return Math.sqrt(Math.pow(pos1[0] - pos2[0], 2) + Math.pow(pos1[1] - pos2[1], 2));
 }
@@ -136,7 +140,8 @@ function food_create() {
     food_list.push({
         pos: [random(0, map.width), random(0, map.height)],
         radius: 5,
-        score: 25
+        score: 25,
+        imgid: randomInt(0, 4)
     });
 }
 
@@ -161,6 +166,7 @@ function queryDir() {
 io.on('connection', function(socket) {
     var socketId = socket.id;
     var random_pos = [random(0, map.width), random(0, map.height)];
+    var random_imgid = randomInt(0, 4);
     console.log(socketId + ' is connecting');
     client_list[socketId] = {
         socket: socket,
@@ -170,7 +176,8 @@ io.on('connection', function(socket) {
             radius: 10,
             speed: 40,
             dir: [0, 0], // unit vector
-            score: 100
+            score: 100,
+            imgid: random_imgid
         }]
     };
 

@@ -73,14 +73,37 @@ document.addEventListener("DOMContentLoaded", function() {
         mouse.click = false;
     }
 
+    // get img
+    function getImg(imgid) {
+        var _img = 'black';
+        switch (imgid) {
+            case 0:
+                _img = 'red';
+                break;
+            case 1:
+                _img = 'green';
+                break;
+            case 2:
+                _img = 'yellow';
+                break;
+            case 3:
+                _img = 'black';
+                break;
+            default:
+                socket.emit('debug', [imgid, -100]);
+        }
+
+        return _img;
+    }
+
     // draw circle
-    function drawCircle(pos, radius) {
+    function drawCircle(pos, radius, imgid) {
         var centerX = pos[0];
         var centerY = pos[1];
         
         context.beginPath();
         context.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
-        context.fillStyle = 'green';
+        context.fillStyle = getImg(imgid);
         context.fill();
         context.lineWidth = 5;
         context.strokeStyle = '#003300';
@@ -94,11 +117,11 @@ document.addEventListener("DOMContentLoaded", function() {
         return Add2D(_position, [canvas.width / 2, canvas.height / 2]);
     }
 
-    function drawBall(_pos, _radius, _rate) {
-        var posInCanvas = relocation(_pos, game.gravity, _rate);
-        var radiusInCanvas = _radius * _rate;
+    function drawBall(_ball, _rate) {
+        var posInCanvas = relocation(_ball.pos, game.gravity, _rate);
+        var radiusInCanvas = _ball.radius * _rate;
 
-        drawCircle(posInCanvas, radiusInCanvas);
+        drawCircle(posInCanvas, radiusInCanvas, _ball.imgid);
     }
 
     // websocket event
@@ -180,21 +203,21 @@ document.addEventListener("DOMContentLoaded", function() {
         for (var i in  game.own_circle) {
             var _ball = game.own_circle[i];
 
-            drawBall(_ball.pos, _ball.radius, rate);
+            drawBall(_ball, rate);
         }
 
         // draw circles
         for (var i in game.circles) {
             var _ball = game.circles[i];
 
-            drawBall(_ball.pos, _ball.radius, rate);
+            drawBall(_ball, rate);
         }
 
         // draw foods
         for (var i in game.foods) {
             var _food = game.foods[i];
 
-            drawBall(_food.pos, _food.radius, rate);
+            drawBall(_food, rate);
         }
     }
 
