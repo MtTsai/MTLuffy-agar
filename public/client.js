@@ -16,6 +16,12 @@ function Div2D(v1, m) {
 }
 
 document.addEventListener("DOMContentLoaded", function() {
+    /* settings */
+    var map = {
+        width: 1980,
+        height: 1024
+    };
+
     var mouse = { 
         click: false,
         move: false,
@@ -211,8 +217,22 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     function emulatorMove(_ball) {
-        var movement = Mul2D(_ball.dir, (_ball.speed / 10) / settings.emuRate);
+        var movement = Mul2D(_ball.dir, (_ball.speed) / settings.emuRate);
         _ball.pos = Add2D(_ball.pos, movement);
+
+        // handle marginal case
+        if (_ball.pos[0] < 0) {
+            _ball.pos[0] = 0;
+        }
+        else if (_ball.pos[0] > map.width) {
+            _ball.pos[0] = map.width;
+        }
+        if (_ball.pos[1] < 0) {
+            _ball.pos[1] = 0;
+        }
+        else if (_ball.pos[1] > map.height) {
+            _ball.pos[1] = map.height;
+        }
     }
 
     function updateGravity() {
@@ -255,11 +275,11 @@ document.addEventListener("DOMContentLoaded", function() {
         // clear the canvas
         context.clearRect(0, 0, canvas.width, canvas.height);
 
-        // draw own circle
-        for (var i in  game.own_circle) {
-            var _ball = game.own_circle[i];
+        // draw foods
+        for (var i in game.foods) {
+            var _food = game.foods[i];
 
-            drawBall(_ball, rate);
+            drawBall(_food, rate);
         }
 
         // draw circles
@@ -269,11 +289,11 @@ document.addEventListener("DOMContentLoaded", function() {
             drawBall(_ball, rate);
         }
 
-        // draw foods
-        for (var i in game.foods) {
-            var _food = game.foods[i];
+        // draw own circle
+        for (var i in  game.own_circle) {
+            var _ball = game.own_circle[i];
 
-            drawBall(_food, rate);
+            drawBall(_ball, rate);
         }
     }
 
