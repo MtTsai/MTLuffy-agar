@@ -30,6 +30,7 @@ var settings = {
 
 
 /* variables */
+var socket_list = [];
 var client_list = [];
 var food_list = [];
 
@@ -144,6 +145,35 @@ function updateAllPosition() {
     for (var id in client_list) {
         updatePlayerPosition(id);
     }
+    for (var id in socket_list) {
+        updatePosData(id);
+    }
+}
+
+function updatePosData(socketId) {
+    var socket = socket_list[socketId];
+    var data = {
+        own: client_list[socketId],
+        others: [],
+        foods: []
+    };
+
+    for (var i in client_list) {
+        var player_t = client_list[i];
+
+        if (i != socketId) {
+            data.others.push(player_t);
+        }
+    }
+
+    for (var i in food_list) {
+        var _food = food_list[i];
+
+        data.foods.push(_food);
+    }
+
+    var senddata = JSON.stringify(data);
+    socket.emit('updatePosData', senddata);
 }
 
 /* food operation */
@@ -179,8 +209,8 @@ io.on('connection', function(socket) {
     var random_pos = [random(0, map.width), random(0, map.height)];
     var random_imgid = randomInt(0, 4);
     console.log(socketId + ' is connecting');
+    socket_list[socketId] = socket;
     client_list[socketId] = {
-        socket: socket,
         gravity: random_pos, // center of gravity
         list: [{
             pos: random_pos,
@@ -205,37 +235,6 @@ io.on('connection', function(socket) {
             // else ball will stop
             _ball.dir = (distance > 10) ? Div2D(_ball_dir, distance) : [0, 0];
         }
-    });
-
-    socket.on('queryData', function () {
-        for (var i in client_list) {
-            var player_t = client_list[i];
-
-            if (i == socketId) {
-                socket.emit('updateGravity', player_t.gravity);
-
-                for (var ballId in player_t.list) {
-                    var _ball = player_t.list[ballId];
-
-                    socket.emit('updateOwn', _ball);
-                }
-            }
-            else {
-                for (var ballId in player_t.list) {
-                    var _ball = player_t.list[ballId];
-
-                    socket.emit('updateCircle', _ball);
-                }
-            }
-        }
-
-        for (var i in food_list) {
-            var _food = food_list[i];
-
-            socket.emit('updateFood', _food);
-        }
-
-        socket.emit('drawCircle');
     });
 
     socket.on('disconnect', function() {

@@ -165,27 +165,33 @@ document.addEventListener("DOMContentLoaded", function() {
         socket.emit('updatePos', [x, y]);
     });
 
-    socket.on('updateGravity', function (_gravity) {
-        game_updator.gravity = _gravity;
-    });
+    socket.on('updatePosData', function (_data) {
+        var obj = JSON.parse(_data);
 
-    socket.on('updateOwn', function (_own) {
-        game_updator.own_circle.push(_own);
-    });
+        game_updator = {
+            gravity: [0, 0],
+            own_circle: [],
+            circles: [],
+            foods: []
+        };
 
-    socket.on('updateCircle', function (_circle) {
-        game_updator.circles.push(_circle);
-    });
+        game_updator.gravity = obj.own.gravity;
 
-    socket.on('updateFood', function (_food) {
-        game_updator.foods.push(_food);
-    });
+        for (var i in obj.own.list) {
+            game_updator.own_circle.push(obj.own.list[i]);
+        }
 
-    socket.on('drawCircle', function () {
+        for (var i in obj.others) {
+            for (var j in obj.others[i].list) {
+                game_updator.circles.push(obj.others[i].list[j]);
+            }
+        }
+
+        for (var i in obj.foods) {
+            game_updator.foods.push(obj.foods[i]);
+        }
+
         game = game_updator;
-
-        // query data per 100ms
-        setTimeout(queryData, settings.clk);
     });
 
     // key event
