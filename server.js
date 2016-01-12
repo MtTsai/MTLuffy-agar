@@ -285,6 +285,6 @@ io.on('connection', function(socket) {
 // setting the query interval 100ms
 setInterval(queryDir, 100);
 
-// setting the position update interval 100ms
-setInterval(updateAllPosition, 100);
+// setting the position update interval 40ms
+setInterval(updateAllPosition, 40);
 

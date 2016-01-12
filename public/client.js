@@ -41,8 +41,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // game related
     var settings = {
-        clk: 100, // server query dir per 100ms
-        emuRate: 1 // emulation of movement per clk
+        clk: 40, // server query dir per 100ms
+        emuRate: 2 // emulation of movement per clk
     };
     settings.frameRate = settings.clk / settings.emuRate; // ms per frame
 
@@ -50,15 +50,19 @@ document.addEventListener("DOMContentLoaded", function() {
         gravity: [0, 0],
         own_circle: [],
         circles: [],
-        foods: []
+        foods: [],
+        emuCount: settings.emuRate
     };
 
     var game_updator = {
         gravity: [0, 0],
         own_circle: [],
         circles: [],
-        foods: []
+        foods: [],
+        emuCount: 0
     };
+
+    var display_queue = [];
 
     window.onload = displayWindowSize;
 
@@ -153,7 +157,8 @@ document.addEventListener("DOMContentLoaded", function() {
             gravity: [0, 0],
             own_circle: [],
             circles: [],
-            foods: []
+            foods: [],
+            emuCount: 0
         };
 
         socket.emit('queryData');
@@ -172,7 +177,8 @@ document.addEventListener("DOMContentLoaded", function() {
             gravity: [0, 0],
             own_circle: [],
             circles: [],
-            foods: []
+            foods: [],
+            emuCount: 0
         };
 
         game_updator.gravity = obj.own.gravity;
@@ -191,7 +197,7 @@ document.addEventListener("DOMContentLoaded", function() {
             game_updator.foods.push(obj.foods[i]);
         }
 
-        game = game_updator;
+        display_queue.push(game_updator);
     });
 
     // key event
@@ -278,6 +284,13 @@ document.addEventListener("DOMContentLoaded", function() {
     function updateFrame() {
         var rate = getAmplifyRate();
 
+        if (display_queue.length == 0 && game.emuCount == settings.emuRate) {
+            return;
+        }
+        while (display_queue.length > 1 || game.emuCount == settings.emuRate) {
+            game = display_queue.shift();
+        }
+
         // clear the canvas
         context.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -301,6 +314,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
             drawBall(_ball, rate);
         }
+
+        emulation();
+        game.emuCount++;
     }
 
     // do the query first time
