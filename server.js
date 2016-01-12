@@ -72,7 +72,7 @@ function eat_balls(id, bid) {
     var player = client_list[id];
     var ball = player.list[bid];
 
-    // TODO: other player (can be eaten or eat others)
+    // TODO: other player (cannot be eaton, only eating others)
 
     // foods
     for (var i in food_list) {
@@ -82,16 +82,18 @@ function eat_balls(id, bid) {
             ball.score = ball.score +_food.score;
             ball.radius = Math.sqrt(ball.score);
 
-            // change speed of ball
-            ball.speed = calc_speed(ball);
-
             // delete the eaten food
             food_list.splice(i, 1);
         }
     }
+
+    // change speed of ball
+    if (ball.status != 2) {
+        ball.speed = calc_speed(ball);
+    }
 }
 
-function updateGravity(id) {
+function updateGravity(id) { // WARNING: this function need to be modified both server & client side
     var player = client_list[id];
     var total_score = 0;
     var total_x = 0;
@@ -100,12 +102,17 @@ function updateGravity(id) {
     for (var ballId in player.list) {
         var _ball = player.list[ballId];
 
+        if (_ball.status == 2) { // bypass out-of-control balls
+            continue;
+        }
+
         total_score += _ball.score;
         total_x += _ball.pos[0] * _ball.score;
         total_y += _ball.pos[1] * _ball.score;
     }
 
-    player.gravity = [total_x / total_score, total_y / total_score];
+    player.gravity = Add2D(Mul2D(player.gravity, 0.99),
+                           Mul2D([total_x / total_score, total_y / total_score], 0.01));
 }
 
 function updatePlayerPosition(id) {
@@ -135,6 +142,14 @@ function updatePlayerPosition(id) {
 
         // check is there a ball can be eaten
         eat_balls(id, ballId);
+
+        // slow down the out-of-control balls & restore normal status
+        if (_ball.status == 2) {
+            _ball.speed *= 0.95;
+            if (_ball.speed < calc_speed(_ball)) {
+                _ball.status = 0;
+            }
+        }
     }
 
     // update gravity
@@ -214,10 +229,11 @@ io.on('connection', function(socket) {
         gravity: random_pos, // center of gravity
         list: [{
             pos: random_pos,
-            radius: 10,
+            radius: 100,
             speed: settings.init_speed,
             dir: [0, 0], // unit vector
-            score: 100,
+            status: 0, // 0: normal speed, 1: slow speed, 2: out-of-control
+            score: 10000,
             imgid: random_imgid
         }]
     };
@@ -233,7 +249,9 @@ io.on('connection', function(socket) {
 
             // if distance > 10 then get the "unit vector" of dir
             // else ball will stop
-            _ball.dir = (distance > 10) ? Div2D(_ball_dir, distance) : [0, 0];
+            if (_ball.status != 2) {
+                _ball.dir = (distance > 10) ? Div2D(_ball_dir, distance) : [0, 0];
+            }
         }
     });
 
@@ -245,27 +263,29 @@ io.on('connection', function(socket) {
 
     socket.on('skill-split', function(dir) {
         var player = client_list[socketId];
-        var distance = calc_dist(dir, [0, 0]);
-        var unit_vector = Div2D(dir, distance);
         var split_list = [];
 
         for (var ballId in player.list) {
             var _ball = player.list[ballId];
 
             if (_ball.score > 400) {
+                var _ball_dir = Minus2D(dir, Minus2D(_ball.pos, player.gravity));
+                var distance = calc_dist(_ball_dir, [0, 0]);
+
+                var unit_vector = Div2D(_ball_dir, distance);
+
                 _ball.score /= 2;
                 _ball.radius = Math.sqrt(_ball.score);
 
                 // change speed of ball
                 _ball.speed = calc_speed(_ball);
 
-                _ball.pos = Minus2D(_ball.pos, Mul2D(unit_vector, 100));
-
                 split_list.push({
-                        pos: Add2D(_ball.pos, Mul2D(unit_vector, 200)),
+                        pos: _ball.pos,
                         radius: _ball.radius,
-                        speed: _ball.speed,
+                        speed: _ball.speed * (_ball.radius / 10),
                         dir: unit_vector,
+                        status: 2,
                         score: _ball.score,
                         imgid: _ball.imgid
                 });

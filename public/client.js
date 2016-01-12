@@ -247,7 +247,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
 
-    function updateGravity() {
+    function updateGravity() { // WARNING: this function need to be modified both server & client side
         var total_score = 0;
         var total_x = 0;
         var total_y = 0;
@@ -255,12 +255,17 @@ document.addEventListener("DOMContentLoaded", function() {
         for (var ballId in game.own_circle) {
             var _ball = game.own_circle[ballId];
 
+            if (_ball.status == 2) { // bypass out-of-control balls
+                continue;
+            }
+
             total_score += _ball.score;
             total_x += _ball.pos[0] * _ball.score;
             total_y += _ball.pos[1] * _ball.score;
         }
 
-        game.gravity = [total_x / total_score, total_y / total_score];
+        game.gravity = Add2D(Mul2D(game.gravity, 0.99),
+                             Mul2D([total_x / total_score, total_y / total_score], 0.01));
     }
 
     function emulation() {
