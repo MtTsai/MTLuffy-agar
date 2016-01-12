@@ -15,13 +15,18 @@ app.use(express.static(__dirname + '/public'));
 
 /* settings */
 var map = {
-        width: 1980,
-        height: 1024
-    };
+    width: 1980,
+    height: 1024
+};
+
 var p_window = { // Player's visible window size
-        width: 1980,
-        height: 1024
-    };
+    width: 1980,
+    height: 1024
+};
+
+var settings = {
+    init_speed: 20
+};
 
 
 /* variables */
@@ -59,6 +64,9 @@ function Div2D(v1, m) {
 }
 
 /* player operation */
+function calc_speed(_ball) {
+    return settings.init_speed * (10 / _ball.radius);
+}
 function eat_balls(id, bid) {
     var player = client_list[id];
     var ball = player.list[bid];
@@ -74,7 +82,7 @@ function eat_balls(id, bid) {
             ball.radius = Math.sqrt(ball.score);
 
             // change speed of ball
-            ball.speed = 40 * (10 / ball.radius);
+            ball.speed = calc_speed(ball);
 
             // delete the eaten food
             food_list.splice(i, 1);
@@ -177,7 +185,7 @@ io.on('connection', function(socket) {
         list: [{
             pos: random_pos,
             radius: 10,
-            speed: 40,
+            speed: settings.init_speed,
             dir: [0, 0], // unit vector
             score: 100,
             imgid: random_imgid
@@ -242,8 +250,6 @@ io.on('connection', function(socket) {
         var unit_vector = Div2D(dir, distance);
         var split_list = [];
 
-        console.log(unit_vector);
-
         for (var ballId in player.list) {
             var _ball = player.list[ballId];
 
@@ -252,8 +258,7 @@ io.on('connection', function(socket) {
                 _ball.radius = Math.sqrt(_ball.score);
 
                 // change speed of ball
-                _ball.speed = 40 * (10 / _ball.radius);
-
+                _ball.speed = calc_speed(_ball);
 
                 _ball.pos = Minus2D(_ball.pos, Mul2D(unit_vector, 100));
 
@@ -261,7 +266,9 @@ io.on('connection', function(socket) {
                         pos: Add2D(_ball.pos, Mul2D(unit_vector, 200)),
                         radius: _ball.radius,
                         speed: _ball.speed,
-                        score: _ball.score
+                        dir: unit_vector,
+                        score: _ball.score,
+                        imgid: _ball.imgid
                 });
             }
         }
