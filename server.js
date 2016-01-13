@@ -102,17 +102,12 @@ function updateGravity(id) { // WARNING: this function need to be modified both 
     for (var ballId in player.list) {
         var _ball = player.list[ballId];
 
-        if (_ball.status == 2) { // bypass out-of-control balls
-            continue;
-        }
-
         total_score += _ball.score;
         total_x += _ball.pos[0] * _ball.score;
         total_y += _ball.pos[1] * _ball.score;
     }
 
-    player.gravity = Add2D(Mul2D(player.gravity, 0.99),
-                           Mul2D([total_x / total_score, total_y / total_score], 0.01));
+    player.gravity = [total_x / total_score, total_y / total_score];
 }
 
 function updatePlayerPosition(id) {
@@ -229,11 +224,11 @@ io.on('connection', function(socket) {
         gravity: random_pos, // center of gravity
         list: [{
             pos: random_pos,
-            radius: 100,
+            radius: 40,
             speed: settings.init_speed,
             dir: [0, 0], // unit vector
             status: 0, // 0: normal speed, 1: slow speed, 2: out-of-control
-            score: 10000,
+            score: 1600,
             imgid: random_imgid
         }]
     };
@@ -268,7 +263,7 @@ io.on('connection', function(socket) {
         for (var ballId in player.list) {
             var _ball = player.list[ballId];
 
-            if (_ball.score > 400) {
+            if (_ball.score > 1600) {
                 var _ball_dir = Minus2D(dir, Minus2D(_ball.pos, player.gravity));
                 var distance = calc_dist(_ball_dir, [0, 0]);
 
@@ -283,7 +278,7 @@ io.on('connection', function(socket) {
                 split_list.push({
                         pos: _ball.pos,
                         radius: _ball.radius,
-                        speed: _ball.speed * (_ball.radius / 10),
+                        speed: _ball.speed * Math.sqrt(_ball.radius),
                         dir: unit_vector,
                         status: 2,
                         score: _ball.score,
