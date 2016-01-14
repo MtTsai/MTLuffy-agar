@@ -110,7 +110,7 @@ function updateGravity(id) { // WARNING: this function need to be modified both 
     player.gravity = [total_x / total_score, total_y / total_score];
 }
 
-function updatePlayerPosition(id) {
+function updatePlayerPosition(id) { // WARNING: this function need to be modified both server & client side
     var player = client_list[id];
 
     for (var ballId in player.list) {
@@ -118,6 +118,29 @@ function updatePlayerPosition(id) {
 
         // update the ball position
         var movement = Mul2D(_ball.dir, _ball.speed);
+
+        var pos_t = Add2D(_ball.pos, movement);
+
+        for (var bid_t in player.list) {
+            if (bid_t == ballId) {
+                continue;
+            }
+
+            var _ball_o = player.list[bid_t]; // ball other
+            var _dist_bf = calc_dist(_ball_o.pos, _ball.pos); // distance before moving
+            var _dist_af = calc_dist(_ball_o.pos, pos_t); // distance after moving
+            var _dist_min = _ball_o.radius + _ball.radius;
+
+            if ((_dist_bf > _dist_min - 1) && // NOT collision before moving (- 1 to avoid maginal case)
+                (_dist_af < _dist_min)) { // ball is collision after moving
+                var react_dir = Div2D(Minus2D(pos_t, _ball_o.pos), _dist_af);
+                var adjust_dist = _dist_min - _dist_af;
+
+                console.log(_dist_bf + ' ' + _dist_af + ' ' + _dist_min + ' ' + adjust_dist);
+                movement = Add2D(movement, Mul2D(react_dir, adjust_dist));
+                console.log(calc_dist(Add2D(_ball.pos, movement), [0, 0]) + ' ' + _dist_min);
+            }
+        }
 
         _ball.pos = Add2D(_ball.pos, movement);
 

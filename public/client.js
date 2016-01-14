@@ -1,3 +1,16 @@
+/* useful function */
+function random (low, high) {
+    return Math.random() * (high - low) + low;
+}
+
+function randomInt (low, high) {
+    return Math.floor(Math.random() * (high - low) + low);
+}
+
+function calc_dist(pos1, pos2) {
+    return Math.sqrt(Math.pow(pos1[0] - pos2[0], 2) + Math.pow(pos1[1] - pos2[1], 2));
+}
+
 /* 2D operation */
 function Add2D(v1, v2) {
     return [v1[0] + v2[0], v1[1] + v2[1]];
@@ -165,9 +178,11 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     socket.on('queryDir', function() {
+        var rate = getAmplifyRate();
         var x = mouse.pos.x - canvas.width / 2;
         var y = mouse.pos.y - canvas.height / 2;
-        socket.emit('updatePos', [x, y]);
+        var dir = Div2D([x, y], rate);
+        socket.emit('updatePos', dir);
     });
 
     socket.on('updatePosData', function (_data) {
@@ -228,8 +243,31 @@ document.addEventListener("DOMContentLoaded", function() {
         return Math.pow(90000 / getTotalScore(), (1 / 8));
     }
 
-    function emulatorMove(_ball) {
+    function emulateMove(_ball) { // WARNING: this function need to be modified both server & client side
         var movement = Mul2D(_ball.dir, (_ball.speed) / settings.emuRate);
+
+        var pos_t = Add2D(_ball.pos, movement);
+
+        for (var bid_t in game.own_circle) {
+            var _ball_o = game.own_circle[bid_t]; // ball other
+
+            if (_ball_o == _ball) {
+                continue;
+            }
+
+            var _dist_bf = calc_dist(_ball_o.pos, _ball.pos); // distance before moving
+            var _dist_af = calc_dist(_ball_o.pos, pos_t); // distance after moving
+            var _dist_min = _ball_o.radius + _ball.radius;
+
+            if ((_dist_bf > _dist_min - 1) && // NOT collision before moving (- 1 to avoid maginal case)
+                (_dist_af < _dist_min)) { // ball is collision after moving
+                var react_dir = Div2D(Minus2D(pos_t, _ball_o.pos), _dist_af);
+                var adjust_dist = _dist_min - _dist_af;
+
+                movement = Add2D(movement, Mul2D(react_dir, adjust_dist));
+            }
+        }
+
         _ball.pos = Add2D(_ball.pos, movement);
 
         // handle marginal case
@@ -268,14 +306,14 @@ document.addEventListener("DOMContentLoaded", function() {
         for (var i in  game.own_circle) {
             var _ball = game.own_circle[i];
 
-            emulatorMove(_ball);
+            emulateMove(_ball);
         }
 
         // other circles
         for (var i in game.circles) {
             var _ball = game.circles[i];
 
-            emulatorMove(_ball);
+            emulateMove(_ball);
         }
 
         updateGravity();
