@@ -47,6 +47,14 @@ function calc_dist(pos1, pos2) {
     return Math.sqrt(Math.pow(pos1[0] - pos2[0], 2) + Math.pow(pos1[1] - pos2[1], 2));
 }
 
+function Max(x, y) {
+    return (x > y) ? x : y;
+}
+
+function Min(x, y) {
+    return (x < y) ? x : y;
+}
+
 /* 2D operation */
 function Add2D(v1, v2) {
     return [v1[0] + v2[0], v1[1] + v2[1]];
@@ -64,10 +72,19 @@ function Div2D(v1, m) {
     return [v1[0] / m, v1[1] / m];
 }
 
+function InPdt(v1, v2) { // Inner Product
+    return v1[0] * v2[0] + v1[1] * v2[1];
+}
+
+function UnVec(v) {
+    return Div2D(v, calc_dist(v, [0, 0]));
+}
+
 /* player operation */
 function calc_speed(_ball) {
     return settings.init_speed * (10 / _ball.radius);
 }
+
 function eat_balls(id, bid) {
     var player = client_list[id];
     var ball = player.list[bid];
@@ -93,6 +110,22 @@ function eat_balls(id, bid) {
     }
 }
 
+function ball_on_wall(_ball) {
+    if (_ball.pos[0] <= 0 || _ball.pos[0] >= map.width ||
+        _ball.pos[1] <= 0 || _ball.pos[1] >= map.height) {
+        return true;
+    }
+    return false;
+}
+
+function ball_on_corner(_ball) {
+    if ((_ball.pos[0] <= 0 || _ball.pos[0] >= map.width) &&
+        (_ball.pos[1] <= 0 || _ball.pos[1] >= map.height)) {
+        return true;
+    }
+    return false;
+}
+
 function updateGravity(id) { // WARNING: this function need to be modified both server & client side
     var player = client_list[id];
     var total_score = 0;
@@ -113,38 +146,19 @@ function updateGravity(id) { // WARNING: this function need to be modified both 
 function updatePlayerPosition(id) { // WARNING: this function need to be modified both server & client side
     var player = client_list[id];
 
+    // update the ball position first
     for (var ballId in player.list) {
         var _ball = player.list[ballId];
 
-        // update the ball position
         var movement = Mul2D(_ball.dir, _ball.speed);
 
-        var pos_t = Add2D(_ball.pos, movement);
-
-        for (var bid_t in player.list) {
-            if (bid_t == ballId) {
-                continue;
-            }
-
-            var _ball_o = player.list[bid_t]; // ball other
-            var _dist_bf = calc_dist(_ball_o.pos, _ball.pos); // distance before moving
-            var _dist_af = calc_dist(_ball_o.pos, pos_t); // distance after moving
-            var _dist_min = _ball_o.radius + _ball.radius;
-
-            if ((_dist_bf > _dist_min - 1) && // NOT collision before moving (- 1 to avoid maginal case)
-                (_dist_af < _dist_min)) { // ball is collision after moving
-                var react_dir = Div2D(Minus2D(pos_t, _ball_o.pos), _dist_af);
-                var adjust_dist = _dist_min - _dist_af;
-
-                console.log(_dist_bf + ' ' + _dist_af + ' ' + _dist_min + ' ' + adjust_dist);
-                movement = Add2D(movement, Mul2D(react_dir, adjust_dist));
-                console.log(calc_dist(Add2D(_ball.pos, movement), [0, 0]) + ' ' + _dist_min);
-            }
-        }
-
         _ball.pos = Add2D(_ball.pos, movement);
+    }
 
-        // handle marginal case
+    // handle marginal case
+    for (var ballId in player.list) {
+        var _ball = player.list[ballId];
+
         if (_ball.pos[0] < 0) {
             _ball.pos[0] = 0;
         }
@@ -157,9 +171,57 @@ function updatePlayerPosition(id) { // WARNING: this function need to be modifie
         else if (_ball.pos[1] > map.height) {
             _ball.pos[1] = map.height;
         }
+    }
 
+    // handle the collision of balls
+    for (var ballId in player.list) {
+        var _ball = player.list[ballId];
+
+        var movement = [0, 0];
+        for (var bid_t in player.list) {
+            var _ball_o = player.list[bid_t]; // ball other
+
+            if (bid_t == ballId) {
+                continue;
+            }
+
+            // the balls priority (higher ball can push the lower)
+            //     on corner > on wall > score
+            if (!ball_on_corner(_ball_o)) {
+                if (ball_on_corner(_ball)) {
+                    continue;
+                }
+                if (ball_on_wall(_ball) && !ball_on_wall(_ball_o)) {
+                    continue;
+                }
+                if (ball_on_wall(_ball) && ball_on_wall(_ball_o)) { // both on the wall
+                    if (_ball.score > _ball_o.score) {
+                        continue;
+                    }
+                }
+            }
+
+            var _dist_t = calc_dist(_ball.pos, _ball_o.pos); // distance after moving
+            var _dist_min = _ball_o.radius + _ball.radius;
+
+            if (_dist_t < _dist_min) { // ball is collision
+                var react_dir = UnVec(Minus2D(_ball.pos, _ball_o.pos));
+                var adjust_dist = _dist_min - _dist_t;
+
+                movement = Add2D(movement, Mul2D(react_dir, adjust_dist));
+            }
+        }
+
+        _ball.pos = Add2D(_ball.pos, movement);
+    }
+
+    for (var ballId in player.list) {
         // check is there a ball can be eaten
         eat_balls(id, ballId);
+    }
+
+    for (var ballId in player.list) {
+        var _ball = player.list[ballId];
 
         // slow down the out-of-control balls & restore normal status
         if (_ball.status == 2) {
@@ -263,12 +325,12 @@ io.on('connection', function(socket) {
         for (var ballId in player.list) {
             var _ball = player.list[ballId];
             var _ball_dir = Minus2D(dir, Minus2D(_ball.pos, player.gravity));
-            var distance = calc_dist(_ball_dir, [0, 0]);
+            var _distance = calc_dist(_ball_dir, [0, 0]);
 
             // if distance > 10 then get the "unit vector" of dir
             // else ball will stop
             if (_ball.status != 2) {
-                _ball.dir = (distance > 10) ? Div2D(_ball_dir, distance) : [0, 0];
+                _ball.dir = (_distance > 10) ? UnVec(_ball_dir) : [0, 0];
             }
         }
     });
@@ -288,9 +350,7 @@ io.on('connection', function(socket) {
 
             if (_ball.score > 1600) {
                 var _ball_dir = Minus2D(dir, Minus2D(_ball.pos, player.gravity));
-                var distance = calc_dist(_ball_dir, [0, 0]);
-
-                var unit_vector = Div2D(_ball_dir, distance);
+                var unit_vector = UnVec(_ball_dir);
 
                 _ball.score /= 2;
                 _ball.radius = Math.sqrt(_ball.score);

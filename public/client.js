@@ -1,3 +1,9 @@
+/* settings */
+var map = {
+    width: 1980,
+    height: 1024
+};
+
 /* useful function */
 function random (low, high) {
     return Math.random() * (high - low) + low;
@@ -9,6 +15,22 @@ function randomInt (low, high) {
 
 function calc_dist(pos1, pos2) {
     return Math.sqrt(Math.pow(pos1[0] - pos2[0], 2) + Math.pow(pos1[1] - pos2[1], 2));
+}
+
+function ball_on_wall(_ball) {
+    if (_ball.pos[0] <= 0 || _ball.pos[0] >= map.width ||
+        _ball.pos[1] <= 0 || _ball.pos[1] >= map.height) {
+        return true;
+    }
+    return false;
+}
+
+function ball_on_corner(_ball) {
+    if ((_ball.pos[0] <= 0 || _ball.pos[0] >= map.width) &&
+        (_ball.pos[1] <= 0 || _ball.pos[1] >= map.height)) {
+        return true;
+    }
+    return false;
 }
 
 /* 2D operation */
@@ -28,13 +50,15 @@ function Div2D(v1, m) {
     return [v1[0] / m, v1[1] / m];
 }
 
-document.addEventListener("DOMContentLoaded", function() {
-    /* settings */
-    var map = {
-        width: 1980,
-        height: 1024
-    };
+function InPdt(v1, v2) { // Inner Product
+    return v1[0] * v2[0] + v1[1] * v2[1];
+}
 
+function UnVec(v) {
+    return Div2D(v, calc_dist(v, [0, 0]));
+}
+
+document.addEventListener("DOMContentLoaded", function() {
     var mouse = { 
         click: false,
         move: false,
@@ -198,14 +222,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
         game_updator.gravity = obj.own.gravity;
 
-        for (var i in obj.own.list) {
-            game_updator.own_circle.push(obj.own.list[i]);
-        }
+        game_updator.own_circle = obj.own;
 
         for (var i in obj.others) {
-            for (var j in obj.others[i].list) {
-                game_updator.circles.push(obj.others[i].list[j]);
-            }
+            game_updator.circles.push(obj.others[i]);
         }
 
         for (var i in obj.foods) {
@@ -230,8 +250,8 @@ document.addEventListener("DOMContentLoaded", function() {
     function getTotalScore() {
         var total_score = 0;
 
-        for (var i in game.own_circle) {
-            var _ball = game.own_circle[i];
+        for (var i in game.own_circle.list) {
+            var _ball = game.own_circle.list[i];
 
             total_score += _ball.score;
         }
@@ -243,45 +263,80 @@ document.addEventListener("DOMContentLoaded", function() {
         return Math.pow(90000 / getTotalScore(), (1 / 8));
     }
 
-    function emulateMove(_ball) { // WARNING: this function need to be modified both server & client side
-        var movement = Mul2D(_ball.dir, (_ball.speed) / settings.emuRate);
+    /*
+     * WARNING: this function need to be modified both server & client side
+     *
+     *     1. Be careful to slow donw the ball speed to (1 / settings.emuRate)
+     *     2. No need to eat balls & change the speed of out-of-control balls
+     */
+    function emulateMove(player) {
+        // update the ball position first
+        for (var ballId in player.list) {
+            var _ball = player.list[ballId];
 
-        var pos_t = Add2D(_ball.pos, movement);
+            var movement = Mul2D(_ball.dir, (_ball.speed) / settings.emuRate);
 
-        for (var bid_t in game.own_circle) {
-            var _ball_o = game.own_circle[bid_t]; // ball other
-
-            if (_ball_o == _ball) {
-                continue;
-            }
-
-            var _dist_bf = calc_dist(_ball_o.pos, _ball.pos); // distance before moving
-            var _dist_af = calc_dist(_ball_o.pos, pos_t); // distance after moving
-            var _dist_min = _ball_o.radius + _ball.radius;
-
-            if ((_dist_bf > _dist_min - 1) && // NOT collision before moving (- 1 to avoid maginal case)
-                (_dist_af < _dist_min)) { // ball is collision after moving
-                var react_dir = Div2D(Minus2D(pos_t, _ball_o.pos), _dist_af);
-                var adjust_dist = _dist_min - _dist_af;
-
-                movement = Add2D(movement, Mul2D(react_dir, adjust_dist));
-            }
+            _ball.pos = Add2D(_ball.pos, movement);
         }
-
-        _ball.pos = Add2D(_ball.pos, movement);
 
         // handle marginal case
-        if (_ball.pos[0] < 0) {
-            _ball.pos[0] = 0;
+        for (var ballId in player.list) {
+            var _ball = player.list[ballId];
+
+            if (_ball.pos[0] < 0) {
+                _ball.pos[0] = 0;
+            }
+            else if (_ball.pos[0] > map.width) {
+                _ball.pos[0] = map.width;
+            }
+            if (_ball.pos[1] < 0) {
+                _ball.pos[1] = 0;
+            }
+            else if (_ball.pos[1] > map.height) {
+                _ball.pos[1] = map.height;
+            }
         }
-        else if (_ball.pos[0] > map.width) {
-            _ball.pos[0] = map.width;
-        }
-        if (_ball.pos[1] < 0) {
-            _ball.pos[1] = 0;
-        }
-        else if (_ball.pos[1] > map.height) {
-            _ball.pos[1] = map.height;
+
+        // handle the collision of balls
+        for (var ballId in player.list) {
+            var _ball = player.list[ballId];
+
+            var movement = [0, 0];
+            for (var bid_t in player.list) {
+                var _ball_o = player.list[bid_t]; // ball other
+
+                if (bid_t == ballId) {
+                    continue;
+                }
+
+                // the balls priority (higher ball can push the lower)
+                //     on corner > on wall > score
+                if (!ball_on_corner(_ball_o)) {
+                    if (ball_on_corner(_ball)) {
+                        continue;
+                    }
+                    if (ball_on_wall(_ball) && !ball_on_wall(_ball_o)) {
+                        continue;
+                    }
+                    if (ball_on_wall(_ball) && ball_on_wall(_ball_o)) { // both on the wall
+                        if (_ball.score > _ball_o.score) {
+                            continue;
+                        }
+                    }
+                }
+
+                var _dist_t = calc_dist(_ball.pos, _ball_o.pos); // distance after moving
+                var _dist_min = _ball_o.radius + _ball.radius;
+
+                if (_dist_t < _dist_min) { // ball is collision
+                    var react_dir = UnVec(Minus2D(_ball.pos, _ball_o.pos));
+                    var adjust_dist = _dist_min - _dist_t;
+
+                    movement = Add2D(movement, Mul2D(react_dir, adjust_dist));
+                }
+            }
+
+            _ball.pos = Add2D(_ball.pos, movement);
         }
     }
 
@@ -290,8 +345,8 @@ document.addEventListener("DOMContentLoaded", function() {
         var total_x = 0;
         var total_y = 0;
 
-        for (var ballId in game.own_circle) {
-            var _ball = game.own_circle[ballId];
+        for (var ballId in game.own_circle.list) {
+            var _ball = game.own_circle.list[ballId];
 
             total_score += _ball.score;
             total_x += _ball.pos[0] * _ball.score;
@@ -303,17 +358,13 @@ document.addEventListener("DOMContentLoaded", function() {
 
     function emulation() {
         // own circle
-        for (var i in  game.own_circle) {
-            var _ball = game.own_circle[i];
-
-            emulateMove(_ball);
-        }
+        emulateMove(game.own_circle);
 
         // other circles
         for (var i in game.circles) {
-            var _ball = game.circles[i];
+            var _player = game.circles[i];
 
-            emulateMove(_ball);
+            emulateMove(_player);
         }
 
         updateGravity();
@@ -341,14 +392,18 @@ document.addEventListener("DOMContentLoaded", function() {
 
         // draw circles
         for (var i in game.circles) {
-            var _ball = game.circles[i];
+            var _player = game.circles[i];
 
-            drawBall(_ball, rate);
+            for (var j in _player.list) {
+                var _ball = _player.list[j];
+
+                drawBall(_ball, rate);
+            }
         }
 
         // draw own circle
-        for (var i in  game.own_circle) {
-            var _ball = game.own_circle[i];
+        for (var i in  game.own_circle.list) {
+            var _ball = game.own_circle.list[i];
 
             drawBall(_ball, rate);
         }
