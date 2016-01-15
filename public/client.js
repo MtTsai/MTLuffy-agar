@@ -85,16 +85,16 @@ document.addEventListener("DOMContentLoaded", function() {
 
     var game = {
         gravity: [0, 0],
-        own_circle: [],
-        circles: [],
+        own: [],
+        others: [],
         foods: [],
         emuCount: settings.emuRate
     };
 
     var game_updator = {
         gravity: [0, 0],
-        own_circle: [],
-        circles: [],
+        own: [],
+        others: [],
         foods: [],
         emuCount: 0
     };
@@ -192,8 +192,8 @@ document.addEventListener("DOMContentLoaded", function() {
     function queryData() {
         game_updator = {
             gravity: [0, 0],
-            own_circle: [],
-            circles: [],
+            own: [],
+            others: [],
             foods: [],
             emuCount: 0
         };
@@ -214,18 +214,18 @@ document.addEventListener("DOMContentLoaded", function() {
 
         game_updator = {
             gravity: [0, 0],
-            own_circle: [],
-            circles: [],
+            own: [],
+            others: [],
             foods: [],
             emuCount: 0
         };
 
         game_updator.gravity = obj.own.gravity;
 
-        game_updator.own_circle = obj.own;
+        game_updator.own = obj.own;
 
         for (var i in obj.others) {
-            game_updator.circles.push(obj.others[i]);
+            game_updator.others.push(obj.others[i]);
         }
 
         for (var i in obj.foods) {
@@ -250,8 +250,8 @@ document.addEventListener("DOMContentLoaded", function() {
     function getTotalScore() {
         var total_score = 0;
 
-        for (var i in game.own_circle.list) {
-            var _ball = game.own_circle.list[i];
+        for (var i in game.own.list) {
+            var _ball = game.own.list[i];
 
             total_score += _ball.score;
         }
@@ -345,8 +345,8 @@ document.addEventListener("DOMContentLoaded", function() {
         var total_x = 0;
         var total_y = 0;
 
-        for (var ballId in game.own_circle.list) {
-            var _ball = game.own_circle.list[ballId];
+        for (var ballId in game.own.list) {
+            var _ball = game.own.list[ballId];
 
             total_score += _ball.score;
             total_x += _ball.pos[0] * _ball.score;
@@ -358,11 +358,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
     function emulation() {
         // own circle
-        emulateMove(game.own_circle);
+        emulateMove(game.own);
 
-        // other circles
-        for (var i in game.circles) {
-            var _player = game.circles[i];
+        // other others
+        for (var i in game.others) {
+            var _player = game.others[i];
 
             emulateMove(_player);
         }
@@ -390,9 +390,9 @@ document.addEventListener("DOMContentLoaded", function() {
             drawBall(_food, rate);
         }
 
-        // draw circles
-        for (var i in game.circles) {
-            var _player = game.circles[i];
+        // draw others
+        for (var i in game.others) {
+            var _player = game.others[i];
 
             for (var j in _player.list) {
                 var _ball = _player.list[j];
@@ -402,8 +402,8 @@ document.addEventListener("DOMContentLoaded", function() {
         }
 
         // draw own circle
-        for (var i in  game.own_circle.list) {
-            var _ball = game.own_circle.list[i];
+        for (var i in  game.own.list) {
+            var _ball = game.own.list[i];
 
             drawBall(_ball, rate);
         }
