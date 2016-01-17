@@ -2,6 +2,7 @@
 var express = require('express'),
     app = express(),
     http = require('http');
+    Util2D = require( './2DUtil' );
 
 var server = http.createServer(app);
 var io = require('socket.io').listen(server);
@@ -34,52 +35,6 @@ var socket_list = [];
 var client_list = [];
 var food_list = [];
 
-/* useful function */
-function random (low, high) {
-    return Math.random() * (high - low) + low;
-}
-
-function randomInt (low, high) {
-    return Math.floor(Math.random() * (high - low) + low);
-}
-
-function calc_dist(pos1, pos2) {
-    return Math.sqrt(Math.pow(pos1[0] - pos2[0], 2) + Math.pow(pos1[1] - pos2[1], 2));
-}
-
-function Max(x, y) {
-    return (x > y) ? x : y;
-}
-
-function Min(x, y) {
-    return (x < y) ? x : y;
-}
-
-/* 2D operation */
-function Add2D(v1, v2) {
-    return [v1[0] + v2[0], v1[1] + v2[1]];
-}
-
-function Minus2D(v1, v2) {
-    return [v1[0] - v2[0], v1[1] - v2[1]];
-}
-
-function Mul2D(v1, m) {
-    return [v1[0] * m, v1[1] * m];
-}
-
-function Div2D(v1, m) {
-    return [v1[0] / m, v1[1] / m];
-}
-
-function InPdt(v1, v2) { // Inner Product
-    return v1[0] * v2[0] + v1[1] * v2[1];
-}
-
-function UnVec(v) {
-    return Div2D(v, calc_dist(v, [0, 0]));
-}
-
 /* player operation */
 function calc_speed(_ball) {
     return settings.init_speed * (10 / _ball.radius);
@@ -95,7 +50,7 @@ function eat_balls(id, bid) {
     for (var i in food_list) {
         var _food = food_list[i];
 
-        if (calc_dist(_food.pos, ball.pos) < ball.radius) {
+        if (Util2D.calc_dist(_food.pos, ball.pos) < ball.radius) {
             ball.score = ball.score +_food.score;
             ball.radius = Math.sqrt(ball.score);
 
@@ -150,9 +105,9 @@ function updatePlayerPosition(id) { // WARNING: this function need to be modifie
     for (var ballId in player.list) {
         var _ball = player.list[ballId];
 
-        var movement = Mul2D(_ball.dir, _ball.speed);
+        var movement = Util2D.Mul(_ball.dir, _ball.speed);
 
-        _ball.pos = Add2D(_ball.pos, movement);
+        _ball.pos = Util2D.Add(_ball.pos, movement);
     }
 
     // handle marginal case
@@ -201,18 +156,18 @@ function updatePlayerPosition(id) { // WARNING: this function need to be modifie
                 }
             }
 
-            var _dist_t = calc_dist(_ball.pos, _ball_o.pos); // distance after moving
+            var _dist_t = Util2D.calc_dist(_ball.pos, _ball_o.pos); // distance after moving
             var _dist_min = _ball_o.radius + _ball.radius;
 
             if (_dist_t < _dist_min) { // ball is collision
-                var react_dir = UnVec(Minus2D(_ball.pos, _ball_o.pos));
+                var react_dir = Util2D.UnVec(Minus(_ball.pos, _ball_o.pos));
                 var adjust_dist = _dist_min - _dist_t;
 
-                movement = Add2D(movement, Mul2D(react_dir, adjust_dist));
+                movement = Util2D.Add(movement, Util2D.Mul(react_dir, adjust_dist));
             }
         }
 
-        _ball.pos = Add2D(_ball.pos, movement);
+        _ball.pos = Util2D.Add(_ball.pos, movement);
     }
 
     for (var ballId in player.list) {
@@ -274,10 +229,10 @@ function updatePosData(socketId) {
 /* food operation */
 function food_create() {
     food_list.push({
-        pos: [random(0, map.width), random(0, map.height)],
+        pos: [Util2D.random(0, map.width), Util2D.random(0, map.height)],
         radius: 5,
         score: 25,
-        imgid: randomInt(0, 4)
+        imgid: Util2D.randomInt(0, 4)
     });
 }
 
@@ -301,8 +256,8 @@ function queryDir() {
 
 io.on('connection', function(socket) {
     var socketId = socket.id;
-    var random_pos = [random(0, map.width), random(0, map.height)];
-    var random_imgid = randomInt(0, 4);
+    var random_pos = [Util2D.random(0, map.width), Util2D.random(0, map.height)];
+    var random_imgid = Util2D.randomInt(0, 4);
     console.log(socketId + ' is connecting');
     socket_list[socketId] = socket;
     client_list[socketId] = {
@@ -324,13 +279,13 @@ io.on('connection', function(socket) {
         // distance cannot equal to 0
         for (var ballId in player.list) {
             var _ball = player.list[ballId];
-            var _ball_dir = Minus2D(dir, Minus2D(_ball.pos, player.gravity));
-            var _distance = calc_dist(_ball_dir, [0, 0]);
+            var _ball_dir = Util2D.Minus(dir, Util2D.Minus(_ball.pos, player.gravity));
+            var _distance = Util2D.calc_dist(_ball_dir, [0, 0]);
 
             // if distance > 10 then get the "unit vector" of dir
             // else ball will stop
             if (_ball.status != 2) {
-                _ball.dir = (_distance > 10) ? UnVec(_ball_dir) : [0, 0];
+                _ball.dir = (_distance > 10) ? Util2D.UnVec(_ball_dir) : [0, 0];
             }
         }
     });
@@ -349,8 +304,8 @@ io.on('connection', function(socket) {
             var _ball = player.list[ballId];
 
             if (_ball.score > 1600) {
-                var _ball_dir = Minus2D(dir, Minus2D(_ball.pos, player.gravity));
-                var unit_vector = UnVec(_ball_dir);
+                var _ball_dir = Util2D.Minus(dir, Minus(_ball.pos, player.gravity));
+                var unit_vector = Util2D.UnVec(_ball_dir);
 
                 _ball.score /= 2;
                 _ball.radius = Math.sqrt(_ball.score);
