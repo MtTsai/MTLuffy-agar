@@ -1,8 +1,18 @@
 /* settings */
-var map = {
-    width: 1980,
-    height: 1024
-};
+var map;
+var jqxhr = $.ajax({
+        url: "api/config/map",
+        dataType: 'json',
+        async: false
+    }).success(function(data) {
+        console.log("success");
+    }).done(function(data) {
+        map = data;
+    }).fail(function() {
+        console.log("error");
+    }).always(function() {
+        console.log("complete");
+    });
 
 /* useful function */
 function random (low, high) {

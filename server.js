@@ -5,6 +5,7 @@ var express = require('express'),
     Util2D = require( './2DUtil' );
 
 var server = http.createServer(app);
+var config = require('./config.json');
 var io = require('socket.io').listen(server);
 var port = 5566;
 
@@ -14,21 +15,22 @@ console.log("Server running on port: " + port);
 /* set the front-end directory */
 app.use(express.static(__dirname + '/public'));
 
+var router = express.Router();
+
+router.get('/map', function(req, res) {
+    res.send(config.map);
+});
+
+app.use('/api/config', router);
+
 /* settings */
-var map = {
-    width: 1980,
-    height: 1024
-};
+var map = config.map;
+var settings = config.settings;
 
 var p_window = { // Player's visible window size
     width: 1980,
     height: 1024
 };
-
-var settings = {
-    init_speed: 20
-};
-
 
 /* variables */
 var socket_list = [];
