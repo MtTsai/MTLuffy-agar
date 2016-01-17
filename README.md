@@ -1,13 +1,19 @@
 # MT Tsai & Luffy Liu
-===
-## This is a practice for web design
+=====================
 
-To be continue....
----
-## Requirement
+Introduction:
+-------------
 
-npm install express
-npm install socket.io
-node server.js
+    This is a practice for web design
 
----
+    To be continue....
+
+Requirement:
+------------
+
+1. npm install express
+2. npm install socket.io
+
+Run:
+----
+* node server.js
