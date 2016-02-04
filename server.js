@@ -162,7 +162,7 @@ function updatePlayerPosition(id) { // WARNING: this function need to be modifie
             var _dist_min = _ball_o.radius + _ball.radius;
 
             if (_dist_t < _dist_min) { // ball is collision
-                var react_dir = Util2D.UnVec(Minus(_ball.pos, _ball_o.pos));
+                var react_dir = Util2D.UnVec(Util2D.Minus(_ball.pos, _ball_o.pos));
                 var adjust_dist = _dist_min - _dist_t;
 
                 movement = Util2D.Add(movement, Util2D.Mul(react_dir, adjust_dist));
@@ -306,7 +306,7 @@ io.on('connection', function(socket) {
             var _ball = player.list[ballId];
 
             if (_ball.score > 1600) {
-                var _ball_dir = Util2D.Minus(dir, Minus(_ball.pos, player.gravity));
+                var _ball_dir = Util2D.Minus(dir, Util2D.Minus(_ball.pos, player.gravity));
                 var unit_vector = Util2D.UnVec(_ball_dir);
 
                 _ball.score /= 2;
