@@ -42,18 +42,38 @@ function calc_speed(_ball) {
     return settings.init_speed * (10 / _ball.radius);
 }
 
-function eat_balls(id, bid) {
-    var player = client_list[id];
+function eat_balls(pid, bid) {
+    var player = client_list[pid];
     var ball = player.list[bid];
 
     // TODO: other player (cannot be eaton, only eating others)
+    for (var id in client_list) {
+        var player_t = client_list[id];
+
+        // bypass itself
+        if (id == pid) {
+            continue;
+        }
+
+        for (var ballId in player_t.list) {
+            var ball_t = player_t.list[ballId];
+
+            if (Util2D.calc_dist(ball_t.pos, ball.pos) < ball.radius) {
+                ball.score = ball.score + ball_t.score;
+                ball.radius = Math.sqrt(ball.score);
+
+                // delete the eaten food
+                player_t.list.splice(ballId, 1);
+            }
+        }
+    }
 
     // foods
     for (var i in food_list) {
         var _food = food_list[i];
 
         if (Util2D.calc_dist(_food.pos, ball.pos) < ball.radius) {
-            ball.score = ball.score +_food.score;
+            ball.score = ball.score + _food.score;
             ball.radius = Math.sqrt(ball.score);
 
             // delete the eaten food
