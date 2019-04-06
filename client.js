@@ -30,31 +30,6 @@ function ball_on_corner(_ball) {
     return false;
 }
 
-/* 2D operation */
-function Add2D(v1, v2) {
-    return [v1[0] + v2[0], v1[1] + v2[1]];
-}
-
-function Minus2D(v1, v2) {
-    return [v1[0] - v2[0], v1[1] - v2[1]];
-}
-
-function Mul2D(v1, m) {
-    return [v1[0] * m, v1[1] * m];
-}
-
-function Div2D(v1, m) {
-    return [v1[0] / m, v1[1] / m];
-}
-
-function InPdt(v1, v2) { // Inner Product
-    return v1[0] * v2[0] + v1[1] * v2[1];
-}
-
-function UnVec(v) {
-    return Div2D(v, calc_dist(v, [0, 0]));
-}
-
 var socket_io = {
     id: 7899,
     func_map: [],
@@ -158,6 +133,16 @@ document.addEventListener("DOMContentLoaded", function() {
         return _img;
     }
 
+    // draw text
+    function drawText(pos, text, size) {
+        context.font = size.toString() + "px Arial";
+        context.fillStyle = 'blue';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+
+        context.fillText(text, pos[0], pos[1]);
+    }
+
     // draw circle
     function drawCircle(pos, radius, imgid) {
         var centerX = pos[0];
@@ -173,10 +158,10 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     function relocation(pos, contrast, rate) {
-        var _position = Mul2D(Minus2D(pos, contrast), rate);
+        var _position = Util2D.Mul(Util2D.Minus(pos, contrast), rate);
 
         // move to center of canvas
-        return Add2D(_position, [canvas.width / 2, canvas.height / 2]);
+        return Util2D.Add(_position, [canvas.width / 2, canvas.height / 2]);
     }
 
     function ballInCanvas(_pos, _radius) {
@@ -185,6 +170,13 @@ document.addEventListener("DOMContentLoaded", function() {
             return true;
         }
         return false;
+    }
+
+    function drawBallScore(_ball, _rate) {
+        var posInCanvas = relocation(_ball.pos, game.gravity, _rate);
+        var text = Math.floor(_ball.score / 25).toString();
+
+        drawText(posInCanvas, text, 30);
     }
 
     function drawBall(_ball, _rate) {
@@ -208,7 +200,7 @@ document.addEventListener("DOMContentLoaded", function() {
         var rate = getAmplifyRate();
         var x = mouse.pos.x - canvas.width / 2;
         var y = mouse.pos.y - canvas.height / 2;
-        var dir = Div2D([x, y], rate);
+        var dir = Util2D.Div([x, y], rate);
         socket_io.emit('updatePos', dir);
     });
 
@@ -278,9 +270,9 @@ document.addEventListener("DOMContentLoaded", function() {
         for (var ballId in player.list) {
             var _ball = player.list[ballId];
 
-            var movement = Mul2D(_ball.dir, (_ball.speed) / settings.emuRate);
+            var movement = Util2D.Mul(_ball.dir, (_ball.speed) / settings.emuRate);
 
-            _ball.pos = Add2D(_ball.pos, movement);
+            _ball.pos = Util2D.Add(_ball.pos, movement);
         }
 
         // handle marginal case
@@ -333,14 +325,14 @@ document.addEventListener("DOMContentLoaded", function() {
                 var _dist_min = _ball_o.radius + _ball.radius;
 
                 if (_dist_t < _dist_min) { // ball is collision
-                    var react_dir = UnVec(Minus2D(_ball.pos, _ball_o.pos));
+                    var react_dir = Util2D.UnVec(Util2D.Minus(_ball.pos, _ball_o.pos));
                     var adjust_dist = _dist_min - _dist_t;
 
-                    movement = Add2D(movement, Mul2D(react_dir, adjust_dist));
+                    movement = Util2D.Add(movement, Util2D.Mul(react_dir, adjust_dist));
                 }
             }
 
-            _ball.pos = Add2D(_ball.pos, movement);
+            _ball.pos = Util2D.Add(_ball.pos, movement);
         }
     }
 
@@ -377,7 +369,7 @@ document.addEventListener("DOMContentLoaded", function() {
     function updateFrame() {
         var rate = getAmplifyRate();
 
-        console.log("update Frame");
+        // console.log("update Frame");
         if (display_queue.length == 0 && game.emuCount == settings.emuRate) {
             return;
         }
@@ -411,6 +403,7 @@ document.addEventListener("DOMContentLoaded", function() {
             var _ball = game.own.list[i];
 
             drawBall(_ball, rate);
+            drawBallScore(_ball, rate);
         }
 
         emulation();

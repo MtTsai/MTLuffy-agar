@@ -5,7 +5,7 @@ var config = {
         height: 1024
     },
     settings: {
-        init_speed: 20
+        init_speed: 30
     }
 };
 
@@ -247,8 +247,8 @@ function food_create() {
 function gen_foods() {
     food_create();
 
-    // generate the food per 10 secs
-    setTimeout(gen_foods, 10000);
+    // generate the 20 food per 1 secs
+    setTimeout(gen_foods, 1000 / 20);
 }
 gen_foods();
 
