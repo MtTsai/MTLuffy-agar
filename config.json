@@ -1,0 +1,9 @@
+{
+    "map": {
+        "width": 1980,
+        "height": 1024
+    },
+    "settings": {
+        "init_speed": 20
+    }
+}
