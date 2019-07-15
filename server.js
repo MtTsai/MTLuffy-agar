@@ -1,3 +1,5 @@
+const Util2D = require('2DUtil')
+
 /* Define dependencies. */
 var config = {
     map: {

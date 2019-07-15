@@ -1,5 +1,5 @@
 
-var Util2D = {
+module.exports = {
     /* useful function */
     random : function(low, high){
         return Math.random() * (high - low) + low;
